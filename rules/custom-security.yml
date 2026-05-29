@@ -1,0 +1,27 @@
+rules:
+  - id: dat-no-console-log
+    patterns:
+      - pattern: console.log(...)
+    message: "Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+    languages:
+      - javascript
+      - typescript
+    severity: WARNING
+
+  - id: dat-no-todo-fixme
+    patterns:
+      - pattern-regex: "(?i)(TODO|FIXME|HACK):.+"
+    message: "Unresolved TODO, FIXME, or HACK comment found. Ensure this technical debt is tracked in Jira."
+    languages:
+      - javascript
+      - typescript
+    severity: INFO
+
+  - id: dat-no-process-exit
+    patterns:
+      - pattern: process.exit(...)
+    message: "Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an error instead."
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR

@@ -1,0 +1,74 @@
+name: Deployment Assist Tool (DAT) Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  dat-scans:
+    runs-on: ubuntu-latest
+    name: Run DevSecOps Scanners
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Semgrep & Checkov
+        run: python3 -m pip install semgrep checkov
+
+      - name: Install OSV-Scanner
+        run: |
+          curl -sfL https://github.com/google/osv-scanner/releases/download/v1.7.1/osv-scanner_1.7.1_linux_amd64 -o /usr/local/bin/osv-scanner
+          chmod +x /usr/local/bin/osv-scanner
+
+      - name: Install Sonar Scanner
+        run: npm install -g sonarqube-scanner
+
+      - name: Install Hadolint
+        run: |
+          sudo wget -O /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          sudo chmod +x /usr/local/bin/hadolint
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.49.1
+
+      - name: Install Dockle
+        run: |
+          VERSION=$(curl --silent "https://api.github.com/repos/goodwithtech/dockle/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+          curl -L -o dockle.tar.gz "https://github.com/goodwithtech/dockle/releases/download/v${VERSION}/dockle_${VERSION}_Linux-64bit.tar.gz"
+          tar zxvf dockle.tar.gz
+          sudo mv dockle /usr/local/bin
+          rm dockle.tar.gz
+
+      - name: Install DAT CLI Dependencies
+        run: npm install
+        
+      - name: Build DAT CLI
+        run: npm run build
+
+      - name: Run DAT Unit Tests
+        run: npm test
+
+      - name: Execute Scans (dat scan)
+        run: node dist/index.js scan
+        env:
+          FORCE_COLOR: 1
+
+      - name: Upload SARIF report to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() # Upload report even if the previous step failed the Quality Gate
+        with:
+          sarif_file: results/dat-report.sarif

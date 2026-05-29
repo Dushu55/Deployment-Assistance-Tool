@@ -1,0 +1,3 @@
+{"total": {"lines":{"total":6,"covered":2,"skipped":0,"pct":33.33},"statements":{"total":7,"covered":2,"skipped":0,"pct":28.57},"functions":{"total":4,"covered":1,"skipped":0,"pct":25},"branches":{"total":2,"covered":0,"skipped":0,"pct":0},"branchesTrue":{"total":0,"covered":0,"skipped":0,"pct":"Unknown"}}
+,"/Users/heisenberg/Projects/deployment_assist_tool/testing_data/app/math.js": {"lines":{"total":6,"covered":2,"skipped":0,"pct":33.33},"functions":{"total":4,"covered":1,"skipped":0,"pct":25},"statements":{"total":7,"covered":2,"skipped":0,"pct":28.57},"branches":{"total":2,"covered":0,"skipped":0,"pct":0}}
+}

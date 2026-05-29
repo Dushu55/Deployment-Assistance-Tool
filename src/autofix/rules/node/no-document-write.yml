@@ -1,0 +1,7 @@
+id: no-document-write
+message: "document.write() is a source of cross-site scripting (XSS) vulnerabilities. Use textContent or appendChild instead."
+severity: warning
+language: typescript
+rule:
+  pattern: document.write($A)
+fix: document.body.appendChild(document.createTextNode($A))

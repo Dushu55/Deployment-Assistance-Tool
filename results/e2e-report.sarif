@@ -1,0 +1,3028 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Deployment Assist Tool (DAT)",
+          "informationUri": "https://github.com/quantiphi/dat",
+          "rules": [
+            {
+              "id": "Hadolint-DL3007",
+              "shortDescription": {
+                "text": "Using latest is prone to errors if the image will ever update. Pin the version explicitly to a relea"
+              },
+              "fullDescription": {
+                "text": "Using latest is prone to errors if the image will ever update. Pin the version explicitly to a release tag"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Hadolint-DL3008",
+              "shortDescription": {
+                "text": "Pin versions in apt get install. Instead of `apt-get install <package>` use `apt-get install <packag"
+              },
+              "fullDescription": {
+                "text": "Pin versions in apt get install. Instead of `apt-get install <package>` use `apt-get install <package>=<version>`"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Hadolint-DL3015",
+              "shortDescription": {
+                "text": "Avoid additional packages by specifying `--no-install-recommends`"
+              },
+              "fullDescription": {
+                "text": "Avoid additional packages by specifying `--no-install-recommends`"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Hadolint-DL3009",
+              "shortDescription": {
+                "text": "Delete the apt lists (/var/lib/apt/lists) after installing something"
+              },
+              "fullDescription": {
+                "text": "Delete the apt lists (/var/lib/apt/lists) after installing something"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Hadolint-DL3014",
+              "shortDescription": {
+                "text": "Use the `-y` switch to avoid manual input `apt-get -y install <package>`"
+              },
+              "fullDescription": {
+                "text": "Use the `-y` switch to avoid manual input `apt-get -y install <package>`"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2024-45590",
+              "shortDescription": {
+                "text": "body-parser (1.18.2) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "body-parser (1.18.2) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 1.20.3"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2024-47764",
+              "shortDescription": {
+                "text": "cookie (0.3.1) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "cookie (0.3.1) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 0.7.0"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2024-29041",
+              "shortDescription": {
+                "text": "express (4.16.0) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "express (4.16.0) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 4.19.2, 5.0.0-beta.3"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2024-43796",
+              "shortDescription": {
+                "text": "express (4.16.0) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "express (4.16.0) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 4.20.0, 5.0.0"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2020-8203",
+              "shortDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 4.17.19"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2021-23337",
+              "shortDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 4.17.21"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2026-4800",
+              "shortDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 4.18.0"
+              }
+            },
+            {
+              "id": "Trivy__FS_-NSWG-ECO-516",
+              "shortDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "help": {
+                "text": "Update to >=4.17.19"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2020-28500",
+              "shortDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 4.17.21"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2025-13465",
+              "shortDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 4.17.23"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2026-2950",
+              "shortDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "lodash (4.17.15) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 4.18.0"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2024-45296",
+              "shortDescription": {
+                "text": "path-to-regexp (0.1.7) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "path-to-regexp (0.1.7) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 1.9.0, 0.1.10, 8.0.0, 3.3.0, 6.3.0"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2024-52798",
+              "shortDescription": {
+                "text": "path-to-regexp (0.1.7) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "path-to-regexp (0.1.7) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 0.1.12"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2026-4867",
+              "shortDescription": {
+                "text": "path-to-regexp (0.1.7) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "path-to-regexp (0.1.7) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 0.1.13"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2022-24999",
+              "shortDescription": {
+                "text": "qs (6.5.1) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "qs (6.5.1) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 6.10.3, 6.9.7, 6.8.3, 6.7.3, 6.6.1, 6.5.3, 6.4.1, 6.3.3, 6.2.4"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2025-15284",
+              "shortDescription": {
+                "text": "qs (6.5.1) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "qs (6.5.1) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 6.14.1"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2024-43799",
+              "shortDescription": {
+                "text": "send (0.16.0) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "send (0.16.0) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 0.19.0"
+              }
+            },
+            {
+              "id": "Trivy__FS_-CVE-2024-43800",
+              "shortDescription": {
+                "text": "serve-static (1.13.0) is vulnerable."
+              },
+              "fullDescription": {
+                "text": "serve-static (1.13.0) is vulnerable."
+              },
+              "help": {
+                "text": "Update to 1.16.0, 2.1.0"
+              }
+            },
+            {
+              "id": "Jest_Coverage-LOW-TEST-COVERAGE",
+              "shortDescription": {
+                "text": "Overall line coverage (33.33%) is below the required threshold (80%)."
+              },
+              "fullDescription": {
+                "text": "Overall line coverage (33.33%) is below the required threshold (80%)."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Jest_Coverage-FILE-LOW-COVERAGE",
+              "shortDescription": {
+                "text": "File coverage (33.33%) is below threshold."
+              },
+              "fullDescription": {
+                "text": "File coverage (33.33%) is below threshold."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Qodo_Cover-Agent-NO-API-KEY",
+              "shortDescription": {
+                "text": "Skipping Cover-Agent: No OPENAI_API_KEY or ANTHROPIC_API_KEY found."
+              },
+              "fullDescription": {
+                "text": "Skipping Cover-Agent: No OPENAI_API_KEY or ANTHROPIC_API_KEY found."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Keploy_API_Tests-NO-KEPLOY-TESTS",
+              "shortDescription": {
+                "text": "No Keploy test suite found in ./keploy directory. Skipping."
+              },
+              "fullDescription": {
+                "text": "No Keploy test suite found in ./keploy directory. Skipping."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-qwcr-r2fm-qrc7",
+              "shortDescription": {
+                "text": "Package body-parser@1.18.2 is vulnerable: body-parser vulnerable to denial of service when url encod"
+              },
+              "fullDescription": {
+                "text": "Package body-parser@1.18.2 is vulnerable: body-parser vulnerable to denial of service when url encoding is enabled"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-pxg6-pf52-xh8x",
+              "shortDescription": {
+                "text": "Package cookie@0.3.1 is vulnerable: cookie accepts cookie name, path, and domain with out of bounds "
+              },
+              "fullDescription": {
+                "text": "Package cookie@0.3.1 is vulnerable: cookie accepts cookie name, path, and domain with out of bounds characters"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-qw6h-vgh9-j6wx",
+              "shortDescription": {
+                "text": "Package express@4.16.0 is vulnerable: express vulnerable to XSS via response.redirect()"
+              },
+              "fullDescription": {
+                "text": "Package express@4.16.0 is vulnerable: express vulnerable to XSS via response.redirect()"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-rv95-896h-c2vc",
+              "shortDescription": {
+                "text": "Package express@4.16.0 is vulnerable: Express.js Open Redirect in malformed URLs"
+              },
+              "fullDescription": {
+                "text": "Package express@4.16.0 is vulnerable: Express.js Open Redirect in malformed URLs"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-29mw-wpgm-hmr9",
+              "shortDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: Regular Expression Denial of Service (ReDoS) in lodash"
+              },
+              "fullDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: Regular Expression Denial of Service (ReDoS) in lodash"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-35jh-r3h4-6jhm",
+              "shortDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: Command Injection in lodash"
+              },
+              "fullDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: Command Injection in lodash"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-f23m-r3pf-42rh",
+              "shortDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: lodash vulnerable to Prototype Pollution via array path bypass"
+              },
+              "fullDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-p6mc-m468-83gw",
+              "shortDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: Prototype Pollution in lodash"
+              },
+              "fullDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: Prototype Pollution in lodash"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-r5fr-rjxr-66jc",
+              "shortDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: lodash vulnerable to Code Injection via `_.template` imports k"
+              },
+              "fullDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: lodash vulnerable to Code Injection via `_.template` imports key names"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-xxjr-mmjv-4gpg",
+              "shortDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: Lodash has Prototype Pollution Vulnerability in `_.unset` and "
+              },
+              "fullDescription": {
+                "text": "Package lodash@4.17.15 is vulnerable: Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-37ch-88jc-xwx2",
+              "shortDescription": {
+                "text": "Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp vulnerable to Regular Expression Denial o"
+              },
+              "fullDescription": {
+                "text": "Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp vulnerable to Regular Expression Denial of Service via multiple route parameters"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-9wv6-86v2-598j",
+              "shortDescription": {
+                "text": "Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp outputs backtracking regular expressions"
+              },
+              "fullDescription": {
+                "text": "Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp outputs backtracking regular expressions"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-rhx6-c78j-4q9w",
+              "shortDescription": {
+                "text": "Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp contains a ReDoS"
+              },
+              "fullDescription": {
+                "text": "Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp contains a ReDoS"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-6rw7-vpxm-498p",
+              "shortDescription": {
+                "text": "Package qs@6.5.1 is vulnerable: qs's arrayLimit bypass in its bracket notation allows DoS via memory"
+              },
+              "fullDescription": {
+                "text": "Package qs@6.5.1 is vulnerable: qs's arrayLimit bypass in its bracket notation allows DoS via memory exhaustion"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-hrpp-h998-j3pp",
+              "shortDescription": {
+                "text": "Package qs@6.5.1 is vulnerable: qs vulnerable to Prototype Pollution"
+              },
+              "fullDescription": {
+                "text": "Package qs@6.5.1 is vulnerable: qs vulnerable to Prototype Pollution"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-m6fv-jmcg-4jfg",
+              "shortDescription": {
+                "text": "Package send@0.16.0 is vulnerable: send vulnerable to template injection that can lead to XSS"
+              },
+              "fullDescription": {
+                "text": "Package send@0.16.0 is vulnerable: send vulnerable to template injection that can lead to XSS"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "OSV-Scanner-GHSA-cm22-4g7w-348p",
+              "shortDescription": {
+                "text": "Package serve-static@1.13.0 is vulnerable: serve-static vulnerable to template injection that can le"
+              },
+              "fullDescription": {
+                "text": "Package serve-static@1.13.0 is vulnerable: serve-static vulnerable to template injection that can lead to XSS"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Promptfoo-NO-API-KEY",
+              "shortDescription": {
+                "text": "Skipping Promptfoo: No LLM API key provided."
+              },
+              "fullDescription": {
+                "text": "Skipping Promptfoo: No LLM API key provided."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Semgrep-rules.dat-no-console-log",
+              "shortDescription": {
+                "text": "Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+              },
+              "fullDescription": {
+                "text": "Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Semgrep-rules.dat-no-process-exit",
+              "shortDescription": {
+                "text": "Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an"
+              },
+              "fullDescription": {
+                "text": "Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an error instead."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Semgrep-javascript.lang.security.detect-child-process.detect-child-process",
+              "shortDescription": {
+                "text": "Detected calls to child_process from a function argument `command`. This could lead to a command inj"
+              },
+              "fullDescription": {
+                "text": "Detected calls to child_process from a function argument `command`. This could lead to a command injection if the input is user controllable. Try to avoid calls to child_process, and if it is needed ensure user input is correctly sanitized or sandboxed. "
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Semgrep-rules.dat-no-todo-fixme",
+              "shortDescription": {
+                "text": "Unresolved TODO, FIXME, or HACK comment found. Ensure this technical debt is tracked in Jira."
+              },
+              "fullDescription": {
+                "text": "Unresolved TODO, FIXME, or HACK comment found. Ensure this technical debt is tracked in Jira."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Semgrep-javascript.express.security.audit.xss.direct-response-write.direct-response-write",
+              "shortDescription": {
+                "text": "Detected directly writing to a Response object from user-defined input. This bypasses any HTML escap"
+              },
+              "fullDescription": {
+                "text": "Detected directly writing to a Response object from user-defined input. This bypasses any HTML escaping and may expose your application to a Cross-Site-scripting (XSS) vulnerability. Instead, use 'resp.render()' to render safely escaped HTML."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Semgrep-javascript.lang.security.audit.code-string-concat.code-string-concat",
+              "shortDescription": {
+                "text": "Found data from an Express or Next web request flowing to `eval`. If this data is user-controllable "
+              },
+              "fullDescription": {
+                "text": "Found data from an Express or Next web request flowing to `eval`. If this data is user-controllable this can lead to execution of arbitrary system commands in the context of your application process. Avoid `eval` whenever possible."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_AWS_41",
+              "shortDescription": {
+                "text": "Ensure no hard coded AWS access key and secret key exists in provider"
+              },
+              "fullDescription": {
+                "text": "Ensure no hard coded AWS access key and secret key exists in provider"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_AWS_260",
+              "shortDescription": {
+                "text": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 80"
+              },
+              "fullDescription": {
+                "text": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 80"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_AWS_24",
+              "shortDescription": {
+                "text": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 22"
+              },
+              "fullDescription": {
+                "text": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 22"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_AWS_23",
+              "shortDescription": {
+                "text": "Ensure every security group and rule has a description"
+              },
+              "fullDescription": {
+                "text": "Ensure every security group and rule has a description"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_AWS_277",
+              "shortDescription": {
+                "text": "Ensure no security groups allow ingress from 0.0.0.0:0 to port -1"
+              },
+              "fullDescription": {
+                "text": "Ensure no security groups allow ingress from 0.0.0.0:0 to port -1"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_AWS_25",
+              "shortDescription": {
+                "text": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 3389"
+              },
+              "fullDescription": {
+                "text": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 3389"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_DOCKER_7",
+              "shortDescription": {
+                "text": "Ensure the base image uses a non latest version tag"
+              },
+              "fullDescription": {
+                "text": "Ensure the base image uses a non latest version tag"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_DOCKER_2",
+              "shortDescription": {
+                "text": "Ensure that HEALTHCHECK instructions have been added to container images"
+              },
+              "fullDescription": {
+                "text": "Ensure that HEALTHCHECK instructions have been added to container images"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_DOCKER_3",
+              "shortDescription": {
+                "text": "Ensure that a user for the container has been created"
+              },
+              "fullDescription": {
+                "text": "Ensure that a user for the container has been created"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_SECRET_6",
+              "shortDescription": {
+                "text": "Base64 High Entropy String"
+              },
+              "fullDescription": {
+                "text": "Base64 High Entropy String"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "Checkov-CKV_SECRET_2",
+              "shortDescription": {
+                "text": "AWS Access Key"
+              },
+              "fullDescription": {
+                "text": "AWS Access Key"
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "k6_Load_Test-LATENCY-OK",
+              "shortDescription": {
+                "text": "p95 Latency (43.55ms) is within acceptable limits."
+              },
+              "fullDescription": {
+                "text": "p95 Latency (43.55ms) is within acceptable limits."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            },
+            {
+              "id": "k6_Load_Test-HTTP-CHECKS-FAILED",
+              "shortDescription": {
+                "text": "100.00% of HTTP requests failed the status==200 check."
+              },
+              "fullDescription": {
+                "text": "100.00% of HTTP requests failed the status==200 check."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "Hadolint-DL3007",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Using latest is prone to errors if the image will ever update. Pin the version explicitly to a release tag"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Hadolint-DL3008",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Pin versions in apt get install. Instead of `apt-get install <package>` use `apt-get install <package>=<version>`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Hadolint-DL3015",
+          "level": "note",
+          "message": {
+            "text": "[LOW] Avoid additional packages by specifying `--no-install-recommends`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Hadolint-DL3009",
+          "level": "note",
+          "message": {
+            "text": "[LOW] Delete the apt lists (/var/lib/apt/lists) after installing something"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Hadolint-DL3014",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Use the `-y` switch to avoid manual input `apt-get -y install <package>`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2024-45590",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] body-parser (1.18.2) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2024-47764",
+          "level": "note",
+          "message": {
+            "text": "[LOW] cookie (0.3.1) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2024-29041",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] express (4.16.0) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2024-43796",
+          "level": "note",
+          "message": {
+            "text": "[LOW] express (4.16.0) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2020-8203",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] lodash (4.17.15) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2021-23337",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] lodash (4.17.15) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2026-4800",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] lodash (4.17.15) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-NSWG-ECO-516",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] lodash (4.17.15) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2020-28500",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] lodash (4.17.15) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2025-13465",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] lodash (4.17.15) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2026-2950",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] lodash (4.17.15) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2024-45296",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] path-to-regexp (0.1.7) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2024-52798",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] path-to-regexp (0.1.7) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2026-4867",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] path-to-regexp (0.1.7) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2022-24999",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] qs (6.5.1) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2025-15284",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] qs (6.5.1) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2024-43799",
+          "level": "note",
+          "message": {
+            "text": "[LOW] send (0.16.0) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Trivy__FS_-CVE-2024-43800",
+          "level": "note",
+          "message": {
+            "text": "[LOW] serve-static (1.13.0) is vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Jest_Coverage-LOW-TEST-COVERAGE",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Overall line coverage (33.33%) is below the required threshold (80%)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "unknown-file"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Jest_Coverage-FILE-LOW-COVERAGE",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] File coverage (33.33%) is below threshold."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/app/math.js"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Qodo_Cover-Agent-NO-API-KEY",
+          "level": "note",
+          "message": {
+            "text": "[INFO] Skipping Cover-Agent: No OPENAI_API_KEY or ANTHROPIC_API_KEY found."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "unknown-file"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Keploy_API_Tests-NO-KEPLOY-TESTS",
+          "level": "note",
+          "message": {
+            "text": "[INFO] No Keploy test suite found in ./keploy directory. Skipping."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "unknown-file"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-qwcr-r2fm-qrc7",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Package body-parser@1.18.2 is vulnerable: body-parser vulnerable to denial of service when url encoding is enabled"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-pxg6-pf52-xh8x",
+          "level": "note",
+          "message": {
+            "text": "[LOW] Package cookie@0.3.1 is vulnerable: cookie accepts cookie name, path, and domain with out of bounds characters"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-qw6h-vgh9-j6wx",
+          "level": "note",
+          "message": {
+            "text": "[LOW] Package express@4.16.0 is vulnerable: express vulnerable to XSS via response.redirect()"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-rv95-896h-c2vc",
+          "level": "note",
+          "message": {
+            "text": "[INFO] Package express@4.16.0 is vulnerable: Express.js Open Redirect in malformed URLs"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-29mw-wpgm-hmr9",
+          "level": "note",
+          "message": {
+            "text": "[INFO] Package lodash@4.17.15 is vulnerable: Regular Expression Denial of Service (ReDoS) in lodash"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-35jh-r3h4-6jhm",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Package lodash@4.17.15 is vulnerable: Command Injection in lodash"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-f23m-r3pf-42rh",
+          "level": "note",
+          "message": {
+            "text": "[INFO] Package lodash@4.17.15 is vulnerable: lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-p6mc-m468-83gw",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Package lodash@4.17.15 is vulnerable: Prototype Pollution in lodash"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-r5fr-rjxr-66jc",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Package lodash@4.17.15 is vulnerable: lodash vulnerable to Code Injection via `_.template` imports key names"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-xxjr-mmjv-4gpg",
+          "level": "note",
+          "message": {
+            "text": "[INFO] Package lodash@4.17.15 is vulnerable: Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-37ch-88jc-xwx2",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp vulnerable to Regular Expression Denial of Service via multiple route parameters"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-9wv6-86v2-598j",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp outputs backtracking regular expressions"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-rhx6-c78j-4q9w",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Package path-to-regexp@0.1.7 is vulnerable: path-to-regexp contains a ReDoS"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-6rw7-vpxm-498p",
+          "level": "note",
+          "message": {
+            "text": "[INFO] Package qs@6.5.1 is vulnerable: qs's arrayLimit bypass in its bracket notation allows DoS via memory exhaustion"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-hrpp-h998-j3pp",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Package qs@6.5.1 is vulnerable: qs vulnerable to Prototype Pollution"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-m6fv-jmcg-4jfg",
+          "level": "note",
+          "message": {
+            "text": "[LOW] Package send@0.16.0 is vulnerable: send vulnerable to template injection that can lead to XSS"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OSV-Scanner-GHSA-cm22-4g7w-348p",
+          "level": "note",
+          "message": {
+            "text": "[LOW] Package serve-static@1.13.0 is vulnerable: serve-static vulnerable to template injection that can lead to XSS"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/heisenberg/Projects/deployment_assist_tool/testing_data/package-lock.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Promptfoo-NO-API-KEY",
+          "level": "note",
+          "message": {
+            "text": "[INFO] Skipping Promptfoo: No LLM API key provided."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "unknown-file"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 16
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 17
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 18
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 19
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 21
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 22
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 23
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 24
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 26
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 27
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/mock-feedback-analytics.js"
+                },
+                "region": {
+                  "startLine": 28
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 32
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 55
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-process-exit",
+          "level": "error",
+          "message": {
+            "text": "[CRITICAL] Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an error instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 63
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 105
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 145
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 147
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 149
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-process-exit",
+          "level": "error",
+          "message": {
+            "text": "[CRITICAL] Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an error instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 150
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 154
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-process-exit",
+          "level": "error",
+          "message": {
+            "text": "[CRITICAL] Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an error instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 155
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 159
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 163
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 189
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 194
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 199
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 203
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 205
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 215
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 217
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 219
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 236
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-process-exit",
+          "level": "error",
+          "message": {
+            "text": "[CRITICAL] Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an error instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 237
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 239
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-process-exit",
+          "level": "error",
+          "message": {
+            "text": "[CRITICAL] Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an error instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/index.ts"
+                },
+                "region": {
+                  "startLine": 240
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 14
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 19
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 21
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 25
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 31
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 33
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 39
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 40
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 41
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 42
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 43
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 44
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/reporter.ts"
+                },
+                "region": {
+                  "startLine": 45
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-javascript.lang.security.detect-child-process.detect-child-process",
+          "level": "error",
+          "message": {
+            "text": "[CRITICAL] Detected calls to child_process from a function argument `command`. This could lead to a command injection if the input is user controllable. Try to avoid calls to child_process, and if it is needed ensure user input is correctly sanitized or sandboxed. "
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/runner.ts"
+                },
+                "region": {
+                  "startLine": 18
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-todo-fixme",
+          "level": "note",
+          "message": {
+            "text": "[INFO] Unresolved TODO, FIXME, or HACK comment found. Ensure this technical debt is tracked in Jira."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/custom-rules-test.js"
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/custom-rules-test.js"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-console-log",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Avoid using console.log() in production code. Use a structured logging library like Winston or Pino."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/custom-rules-test.js"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-rules.dat-no-process-exit",
+          "level": "error",
+          "message": {
+            "text": "[CRITICAL] Avoid using process.exit() in application code. It abruptly terminates the Node.js process. Throw an error instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/custom-rules-test.js"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-javascript.express.security.audit.xss.direct-response-write.direct-response-write",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Detected directly writing to a Response object from user-defined input. This bypasses any HTML escaping and may expose your application to a Cross-Site-scripting (XSS) vulnerability. Instead, use 'resp.render()' to render safely escaped HTML."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/index.js"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-javascript.lang.security.audit.code-string-concat.code-string-concat",
+          "level": "error",
+          "message": {
+            "text": "[CRITICAL] Found data from an Express or Next web request flowing to `eval`. If this data is user-controllable this can lead to execution of arbitrary system commands in the context of your application process. Avoid `eval` whenever possible."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/index.js"
+                },
+                "region": {
+                  "startLine": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Semgrep-javascript.express.security.audit.xss.direct-response-write.direct-response-write",
+          "level": "warning",
+          "message": {
+            "text": "[MEDIUM] Detected directly writing to a Response object from user-defined input. This bypasses any HTML escaping and may expose your application to a Cross-Site-scripting (XSS) vulnerability. Instead, use 'resp.render()' to render safely escaped HTML."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testing_data/index.js"
+                },
+                "region": {
+                  "startLine": 16
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_AWS_41",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure no hard coded AWS access key and secret key exists in provider"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/main.tf"
+                },
+                "region": {
+                  "startLine": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_AWS_260",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure no security groups allow ingress from 0.0.0.0:0 to port 80"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/main.tf"
+                },
+                "region": {
+                  "startLine": 23
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_AWS_24",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure no security groups allow ingress from 0.0.0.0:0 to port 22"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/main.tf"
+                },
+                "region": {
+                  "startLine": 23
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_AWS_23",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure every security group and rule has a description"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/main.tf"
+                },
+                "region": {
+                  "startLine": 23
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_AWS_277",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure no security groups allow ingress from 0.0.0.0:0 to port -1"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/main.tf"
+                },
+                "region": {
+                  "startLine": 23
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_AWS_25",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure no security groups allow ingress from 0.0.0.0:0 to port 3389"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/main.tf"
+                },
+                "region": {
+                  "startLine": 23
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_DOCKER_7",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure the base image uses a non latest version tag"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_DOCKER_2",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure that HEALTHCHECK instructions have been added to container images"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_DOCKER_3",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Ensure that a user for the container has been created"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_SECRET_6",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] Base64 High Entropy String"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/Dockerfile"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "Checkov-CKV_SECRET_2",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] AWS Access Key"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/testing_data/main.tf"
+                },
+                "region": {
+                  "startLine": 18
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "k6_Load_Test-LATENCY-OK",
+          "level": "note",
+          "message": {
+            "text": "[INFO] p95 Latency (43.55ms) is within acceptable limits."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "unknown-file"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "k6_Load_Test-HTTP-CHECKS-FAILED",
+          "level": "error",
+          "message": {
+            "text": "[HIGH] 100.00% of HTTP requests failed the status==200 check."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "unknown-file"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

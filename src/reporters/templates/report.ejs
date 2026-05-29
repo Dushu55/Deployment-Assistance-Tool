@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>DAT Security Report</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 0; }
+        .header { border-bottom: 2px solid #2C3E50; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #2C3E50; margin: 0; font-size: 28px; }
+        .header p { color: #7F8C8D; margin: 5px 0 0 0; }
+        .kpi-container { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .kpi { text-align: center; padding: 20px; border-radius: 8px; background: #ECF0F1; width: 18%; }
+        .kpi h2 { margin: 0; font-size: 24px; color: #2C3E50; }
+        .kpi p { margin: 5px 0 0 0; font-size: 12px; color: #7F8C8D; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi.score-green { background: #E8F8F5; } .kpi.score-green h2 { color: #27AE60; }
+        .kpi.score-yellow { background: #FEF9E7; } .kpi.score-yellow h2 { color: #F1C40F; }
+        .kpi.score-red { background: #FDEDEC; } .kpi.score-red h2 { color: #E74C3C; }
+        .chart-container { text-align: center; margin-bottom: 40px; }
+        .chart-container img { max-width: 400px; }
+        
+        .section-title { background: #2C3E50; color: white; padding: 10px 15px; border-radius: 4px; font-size: 18px; margin-top: 40px; page-break-after: avoid; }
+        
+        .finding { border: 1px solid #BDC3C7; border-left: 5px solid #BDC3C7; border-radius: 4px; margin-bottom: 20px; padding: 15px; page-break-inside: avoid; }
+        .finding.CRITICAL { border-left-color: #E74C3C; }
+        .finding.HIGH { border-left-color: #E67E22; }
+        .finding.MEDIUM { border-left-color: #F1C40F; }
+        .finding.LOW { border-left-color: #3498DB; }
+        .finding.INFO { border-left-color: #95A5A6; }
+        
+        .finding-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ECF0F1; padding-bottom: 10px; margin-bottom: 10px; }
+        .finding-id { font-weight: bold; color: #2C3E50; font-family: monospace; font-size: 14px; }
+        .finding-meta { font-size: 12px; color: #7F8C8D; }
+        
+        .badge { padding: 4px 8px; border-radius: 12px; color: white; font-size: 11px; font-weight: bold; }
+        .badge.CRITICAL { background: #E74C3C; }
+        .badge.HIGH { background: #E67E22; }
+        .badge.MEDIUM { background: #F1C40F; }
+        .badge.LOW { background: #3498DB; }
+        .badge.INFO { background: #95A5A6; }
+
+        .ai-block { background: #282C34; color: #ABB2BF; padding: 15px; border-radius: 6px; font-family: 'Courier New', Courier, monospace; font-size: 13px; margin-top: 15px; white-space: pre-wrap; word-wrap: break-word; }
+        .ai-block .highlight { color: #E06C75; }
+        .ai-block .path { color: #98C379; }
+        .ai-block .remedy { color: #61AFEF; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Deployment Assist Tool (DAT)</h1>
+    <p>Automated DevSecOps Scan Report & AI Remediation Manifest</p>
+    <p style="font-size: 12px; margin-top: 10px;">Generated: <%= new Date(report.timestamp).toLocaleString() %></p>
+</div>
+
+<% 
+    const s = report.summary;
+    const score = calculateReadinessScore(s);
+    let scoreClass = score >= 80 ? 'score-green' : (score >= 50 ? 'score-yellow' : 'score-red');
+%>
+
+<div class="kpi-container">
+    <div class="kpi <%= scoreClass %>">
+        <h2><%= score %>/100</h2>
+        <p>Readiness Score</p>
+    </div>
+    <div class="kpi" style="border-bottom: 4px solid #E74C3C;">
+        <h2><%= s.critical %></h2>
+        <p>Critical</p>
+    </div>
+    <div class="kpi" style="border-bottom: 4px solid #E67E22;">
+        <h2><%= s.high %></h2>
+        <p>High</p>
+    </div>
+    <div class="kpi" style="border-bottom: 4px solid #F1C40F;">
+        <h2><%= s.medium %></h2>
+        <p>Medium</p>
+    </div>
+    <div class="kpi" style="border-bottom: 4px solid #3498DB;">
+        <h2><%= s.low %></h2>
+        <p>Low</p>
+    </div>
+</div>
+
+<div class="chart-container">
+    <% 
+        const chartData = {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+                datasets: [{
+                    data: [s.critical, s.high, s.medium, s.low, s.info],
+                    backgroundColor: ['#E74C3C', '#E67E22', '#F1C40F', '#3498DB', '#95A5A6']
+                }]
+            },
+            options: { plugins: { datalabels: { color: '#fff' } } }
+        };
+        const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartData))}&w=400&h=250`;
+    %>
+    <img src="<%= chartUrl %>" alt="Vulnerability Distribution Chart" />
+</div>
+
+<div class="section-title">Detailed Findings & AI Remediation Data</div>
+<p style="color: #7F8C8D; font-size: 13px; margin-bottom: 30px;">This section is structured to provide explicit context to AI assistants (CodeX, Claude, Copilot) for automated remediation.</p>
+
+<% report.results.forEach(function(scanner) { %>
+    <% if (scanner.issues.length > 0) { %>
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;"><%= scanner.scannerName %> Findings</h3>
+        
+        <% scanner.issues.forEach(function(issue) { %>
+            <div class="finding <%= issue.severity %>">
+                <div class="finding-header">
+                    <span class="badge <%= issue.severity %>"><%= issue.severity %></span>
+                    <span class="finding-id"><%= issue.id %></span>
+                    <span class="finding-meta"><%= issue.source %></span>
+                </div>
+                
+                <p><strong>Description:</strong> <%= issue.message %></p>
+                
+                <% if (issue.file) { %>
+                    <p><strong>Location:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 3px;"><%= issue.file %><%= issue.line ? `:${issue.line}` : '' %></span></p>
+                <% } %>
+
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path"><%= issue.file || 'Global/Dependency' %></span>
+Target_Line: <span class="path"><%= issue.line || 'N/A' %></span>
+Issue_Type:  <span class="highlight"><%= issue.id %></span>
+Severity:    <span class="highlight"><%= issue.severity %></span>
+
+Instruction: Fix the vulnerability described below.
+"<span style="color: #fff"><%= issue.message %></span>"
+<% if (issue.remediation) { %>
+Suggested_Remedy: <span class="remedy"><%= issue.remediation %></span>
+<% } %>
+                </div>
+            </div>
+        <% }); %>
+    <% } %>
+<% }); %>
+
+</body>
+</html>

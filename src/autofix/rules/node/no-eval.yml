@@ -1,0 +1,7 @@
+id: no-eval
+message: Use JSON.parse instead of eval for parsing strings.
+severity: error
+language: typescript
+rule:
+  pattern: eval($A)
+fix: JSON.parse($A)

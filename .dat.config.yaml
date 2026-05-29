@@ -1,0 +1,40 @@
+scanners:
+  semgrep:
+    enabled: true
+    rules:
+      - p/javascript
+      - p/security-audit
+    customRulesDir: "rules"
+  sonarqube:
+    enabled: true
+  trivy:
+    enabled: true
+  hadolint:
+    enabled: true
+  dockle:
+    enabled: true
+  checkov:
+    enabled: true
+  osv:
+    enabled: true
+  zap:
+    enabled: true
+  jest:
+    enabled: true
+    threshold: 80
+    targetDir: "testing_data/app"
+  coverAgent:
+    enabled: true
+  keploy:
+    enabled: true
+  k6:
+    enabled: true
+    thresholdMs: 500
+  promptfoo:
+    enabled: true
+    targetDir: "testing_data/llm_app"
+  garak:
+    enabled: true
+failOn:
+  - CRITICAL
+  - HIGH
