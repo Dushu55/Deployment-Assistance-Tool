@@ -4,7 +4,9 @@ import yaml from 'yaml';
 import { DatConfig } from './types.js';
 
 const DEFAULT_CONFIG: DatConfig = {
-  autoFix: { enabled: true },
+  // Safe by default: auto-fix mutates the working tree, so it must be opted into
+  // explicitly (via the --auto-fix CLI flag or autoFix.enabled in .dat.config.yaml).
+  autoFix: { enabled: false },
   scanners: {
     semgrep: { enabled: true, rules: ['p/security-audit'] },
     trivy: { enabled: true },

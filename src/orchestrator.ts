@@ -57,6 +57,7 @@ export interface DatRunOptions {
   only?: string;
   skip?: string;
   dryRun?: boolean;
+  autoFix?: boolean; // opt-in: mutate the working tree with AST auto-fixes (default off for `scan`)
   throwOnFailure?: boolean; // programmatic invocation might not want process.exit(1)
   auditContext?: AuditContext;
 }
@@ -195,27 +196,34 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   console.log(chalk.gray('\nExecuting scanners with a concurrency limit of 4...'));
   const results = await runWithConcurrencyLimit(scannersToRun, { config, url: options.url, authToken: options.authToken, detectedLanguages }, 4);
 
-  // 5.5 Trigger AST Auto-Fixer if static analysis ran
-  const autoFixer = new AstGrepAutoFixer();
-  console.log(chalk.cyan(`\n🛠️  Running Autonomous Remediation (AST Auto-Fixer)...`));
-  // Default to env detector verify command if not set in config
-  const verifyCmd = (config as any).verifyCommand || envDetector.getVerifyCommand(detectedLanguages);
-  const fixResults = await autoFixer.applyAllFixes(verifyCmd, detectedLanguages);
-  let totalFilesFixed = 0;
-  
-  fixResults.forEach(res => {
-    if (res.success && res.filesFixed.length > 0) {
-      totalFilesFixed += res.filesFixed.length;
-      console.log(chalk.green(`   ✔ Applied fix [${res.ruleId}] to ${res.filesFixed.length} file(s).`));
-    } else if (res.reverted) {
-      console.log(chalk.yellow(`   ⚠️  Reverted fix [${res.ruleId}] in ${res.filesFixed.length} file(s) due to failing verification tests.`));
-    }
-  });
+  // 5.5 Trigger AST Auto-Fixer ONLY when explicitly enabled.
+  // Auto-fix mutates the working tree, so it is OFF by default for `scan`. Enable it via
+  // the --auto-fix CLI flag or `autoFix.enabled: true` in config (the PR-bot path passes it explicitly).
+  const autoFixEnabled = options.autoFix ?? config.autoFix?.enabled ?? false;
+  if (autoFixEnabled) {
+    const autoFixer = new AstGrepAutoFixer();
+    console.log(chalk.cyan(`\n🛠️  Running Autonomous Remediation (AST Auto-Fixer)...`));
+    // Default to env detector verify command if not set in config
+    const verifyCmd = (config as any).verifyCommand || envDetector.getVerifyCommand(detectedLanguages);
+    const fixResults = await autoFixer.applyAllFixes(verifyCmd, detectedLanguages);
+    let totalFilesFixed = 0;
 
-  if (totalFilesFixed > 0) {
-     console.log(chalk.green.bold(`\n✨ Auto-remediated ${totalFilesFixed} vulnerable patterns in the codebase!`));
+    fixResults.forEach(res => {
+      if (res.success && res.filesFixed.length > 0) {
+        totalFilesFixed += res.filesFixed.length;
+        console.log(chalk.green(`   ✔ Applied fix [${res.ruleId}] to ${res.filesFixed.length} file(s).`));
+      } else if (res.reverted) {
+        console.log(chalk.yellow(`   ⚠️  Reverted fix [${res.ruleId}] in ${res.filesFixed.length} file(s) due to failing verification tests.`));
+      }
+    });
+
+    if (totalFilesFixed > 0) {
+      console.log(chalk.green.bold(`\n✨ Auto-remediated ${totalFilesFixed} vulnerable patterns in the codebase!`));
+    } else {
+      console.log(chalk.gray(`   No safe auto-fixable patterns were retained.`));
+    }
   } else {
-     console.log(chalk.gray(`   No safe auto-fixable patterns were retained.`));
+    console.log(chalk.gray(`\n🛠️  Auto-fix disabled (pass --auto-fix or set autoFix.enabled to remediate).`));
   }
 
   // 6. Aggregate and Deduplicate Results
