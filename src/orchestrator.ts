@@ -6,6 +6,7 @@ import { generateCsv } from './reporters/csv.js';
 import { generatePdf } from './reporters/pdf.js';
 import { pushToDefectDojo } from './reporters/defectdojo.js';
 import { pushToDependencyTrack } from './reporters/dependencyTrack.js';
+import { generateFixManifest } from './reporters/fixManifest.js';
 import { AggregatedReport, ScannerResult } from './types.js';
 import { ALL_SCANNERS } from './scanners/index.js';
 import { calculateReadinessScore, deduplicateResults } from './utils.js';
@@ -53,6 +54,7 @@ export interface DatRunOptions {
   sarif?: string;
   csv?: string;
   pdf?: string;
+  fixManifest?: string; // machine-consumable findings for coding agents (Claude Code)
   pushDojo?: boolean;
   pushDtrack?: boolean;
   only?: string;
@@ -344,6 +346,19 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       console.log(chalk.red.bold('\n❌ Quality Gate Failed.'));
   } else {
       console.log(chalk.green.bold('\n✅ Quality Gate Passed.\n'));
+  }
+
+  // 11.5 Emit the machine-consumable fix manifest for coding agents (Claude Code).
+  // Generated after the gate so it records the final score and gate state.
+  if (options.fixManifest) {
+    const verifyCmd = (config as any).verifyCommand || envDetector.getVerifyCommand(detectedLanguages);
+    generateFixManifest(report, options.fixManifest, {
+      verifyCommand: verifyCmd,
+      failOn: config.failOn,
+      readinessScore: score,
+      gatePassed: !failedGate
+    });
+    console.log(chalk.gray(`🤖 Fix manifest saved to ${options.fixManifest} (consumable by Claude Code)`));
   }
 
   emitAuditEnd(executionId, !failedGate, score, totalIssuesFound);

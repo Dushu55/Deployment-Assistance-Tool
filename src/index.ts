@@ -20,6 +20,7 @@ program
   .option('--sarif <path>', 'Output results in SARIF format', 'results/dat-report.sarif')
   .option('--csv <path>', 'Output results in CSV format', 'results/dat-report.csv')
   .option('--pdf <path>', 'Output results in professional PDF format', 'results/dat-report.pdf')
+  .option('--fix-manifest <path>', 'Output machine-consumable findings for coding agents (Claude Code)', 'results/dat-fix-manifest.json')
   .option('--push-dojo', 'Push SARIF report to DefectDojo (requires env vars DEFECTDOJO_URL, DEFECTDOJO_API_KEY)')
   .option('--push-dtrack', 'Push SBOM to Dependency-Track (requires env vars DEPENDENCY_TRACK_URL, DEPENDENCY_TRACK_API_KEY)')
   .option('--only <scanners>', 'Run only specific scanners (comma-separated, e.g., semgrep,trivy)')
