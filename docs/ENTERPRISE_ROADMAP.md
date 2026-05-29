@@ -96,6 +96,10 @@ Key additions to the existing engine: a **Component Model** (§2 builder), **Com
 
 ### Phase 0 — Truth & Foundation  *(≈2–3 ew · Risk: Low)*
 
+> **Status (2026-05-30): substantially DONE.** Repo under version control + CODEOWNERS; scrap removed;
+> Defects A, B, C, D, E, I closed with tests; presence-only tests replaced (40→80); docs reconciled.
+> Remaining: GitHub branch-protection settings (out-of-band), broader parser-test coverage.
+
 Make the existing tool trustworthy and the repo professional. Prerequisite for everything else.
 
 - [ ] `git init`, import history, add branch protection, CODEOWNERS, conventional commits.
@@ -112,6 +116,11 @@ Make the existing tool trustworthy and the repo professional. Prerequisite for e
 **Exit criteria:** clean repo, green CI with meaningful tests, no silent gate bypasses, auto-fix safe-by-default, docs match code.
 
 ### Phase 1 — Fix-Handoff Contract (Claude-Code-consumable format)  *(≈1.5–2 ew · Risk: Low)*
+
+> **Status (2026-05-30): DONE.** Versioned `fix-manifest.json` exporter + `--fix-manifest` flag +
+> [CLAUDE_FIX_PROTOCOL.md](CLAUDE_FIX_PROTOCOL.md) shipped and tested. Optional `dat verify --manifest`
+> convenience command remains a follow-up. A **`Logic Tests`** provision (functional-correctness
+> execution feeding the gate and manifest) was added alongside, per stakeholder emphasis.
 
 The highest-leverage net-new artifact. Unblocks the entire "agent fixes it" loop and is cheap because it rides the existing `Issue[]`.
 
