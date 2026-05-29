@@ -12,6 +12,7 @@ import { ComponentGraph } from './components/types.js';
 import { AggregatedReport, ScannerResult, DatConfig, Scanner, SupportedLanguage, ProfileName } from './types.js';
 import { PROFILES } from './profiles.js';
 import { isNotApplicable, DEFAULT_REQUIRED } from './inputs.js';
+import { checkReadiness, printReadiness } from './readiness.js';
 import { ALL_SCANNERS } from './scanners/index.js';
 import { calculateReadinessScore, deduplicateResults } from './utils.js';
 import { activeProcesses } from './runner.js';
@@ -121,6 +122,8 @@ export interface DatRunOptions {
   only?: string;
   skip?: string;
   dryRun?: boolean;
+  skipPreflight?: boolean;   // bypass the automatic application-readiness check at scan start
+  strictPreflight?: boolean; // abort the scan if a required input is missing
   autoDetect?: boolean; // prune scanners whose advisory input is absent (default true; --no-auto-detect)
   deploy?: boolean; // provision + teardown an ephemeral GCP environment around the scan
   autoFix?: boolean; // opt-in: mutate the working tree with AST auto-fixes (default off for `scan`)
@@ -205,7 +208,24 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   
   // 1. Load config
   const config = loadConfig(configPath);
-  
+
+  // 1.5 Application-readiness preflight (warn by default). Verifies the target app has the
+  // expected input files BEFORE scanning, so missing inputs aren't discovered mid-scan (or hidden
+  // by silent-pass scanners). Bypass with --skip-preflight; abort with --strict-preflight.
+  if (!options.skipPreflight) {
+    const readiness = await checkReadiness(config, {
+      configPath,
+      url: options.url,
+      deploy: options.deploy,
+      profile: options.profile ?? config.profile,
+      detectedLanguages
+    });
+    printReadiness(readiness);
+    if (options.strictPreflight && readiness.requiredMissing > 0) {
+      throw new Error(`Preflight failed: ${readiness.requiredMissing} required input(s) missing. Configure them or run without --strict-preflight.`);
+    }
+  }
+
   // 2. Identify enabled scanners from config/profile and support for current languages
   const activeProfile = options.profile ?? config.profile;
   if (activeProfile) {

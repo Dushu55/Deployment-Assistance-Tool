@@ -6,6 +6,8 @@ import { runDatPipeline } from './orchestrator.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
 import { EnvironmentDetector } from './env.js';
 import { isProfileName, PROFILE_NAMES } from './profiles.js';
+import { loadConfig } from './config.js';
+import { checkReadiness, printReadiness } from './readiness.js';
 
 const program = new Command();
 
@@ -33,6 +35,8 @@ program
   .option('--skip <scanners>', 'Skip specific scanners (comma-separated, e.g., zap,dockle)')
   .option('--dry-run', 'Show which scanners would run without executing them')
   .option('--no-auto-detect', 'Do not prune scanners whose expected input is absent (run all selected scanners)')
+  .option('--skip-preflight', 'Skip the application-readiness check at scan start')
+  .option('--strict-preflight', 'Abort the scan if a required input (Dockerfile / tests / DAST target / config) is missing')
   .option('--auto-fix', 'Apply autonomous AST auto-fixes to the working tree (mutates files; verified by your test suite and reverted on failure)')
   .action(async (options) => {
     try {
@@ -54,6 +58,35 @@ program
       }
     } catch (error: any) {
       console.log(chalk.red.bold('\n❌ Pipeline execution failed:'), error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('preflight')
+  .description('Verify the target application has the files needed for a meaningful scan (run before scan)')
+  .option('-c, --config <path>', 'Path to config file', '.dat.config.yaml')
+  .option('-p, --profile <name>', 'Evaluate readiness for a specific profile (quick|standard|security|full)')
+  .option('-u, --url <url>', 'DAST target URL (satisfies ZAP/k6/Garak readiness)')
+  .option('--deploy', 'Treat the ephemeral deploy as the DAST target source')
+  .option('--strict', 'Exit non-zero if any REQUIRED input is missing')
+  .action(async (options) => {
+    try {
+      if (options.profile && !isProfileName(options.profile)) {
+        console.log(chalk.red.bold(`\n❌ Unknown profile "${options.profile}". Valid: ${PROFILE_NAMES.join(', ')}.`));
+        process.exit(1);
+      }
+      const config = loadConfig(options.config);
+      const report = await checkReadiness(config, {
+        configPath: options.config,
+        url: options.url,
+        deploy: options.deploy,
+        profile: options.profile
+      });
+      printReadiness(report);
+      process.exit(options.strict && report.requiredMissing > 0 ? 1 : 0);
+    } catch (error: any) {
+      console.log(chalk.red.bold('\n❌ Preflight failed:'), error.message);
       process.exit(1);
     }
   });
