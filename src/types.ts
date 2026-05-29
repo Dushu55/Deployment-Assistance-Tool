@@ -47,6 +47,7 @@ export interface DatConfig {
     coverAgent?: { enabled: boolean; sourceFilePath?: string; testFilePath?: string; testCommand?: string };
     keploy?: { enabled: boolean; appCmd?: string };
     k6?: { enabled: boolean; thresholdMs?: number };
+    logicTests?: { enabled: boolean; command?: string; targetDir?: string; failOnMissingTests?: boolean };
     promptfoo?: { enabled: boolean; targetDir?: string };
     garak?: { enabled: boolean };
     bandit?: { enabled: boolean; targetDir?: string };

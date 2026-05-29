@@ -39,7 +39,9 @@ export const CONFIG_KEYS: Record<string, string> = {
   '.NET Analyzers': 'dotnetSast',
   '.NET NuGet Audit': 'dotnetSca',
   'Clippy': 'clippy',
-  'cargo-audit': 'cargoAudit'
+  'cargo-audit': 'cargoAudit',
+  'Gitleaks (Secrets)': 'gitleaks',
+  'Logic Tests': 'logicTests'
 };
 
 export interface DatRunOptions {

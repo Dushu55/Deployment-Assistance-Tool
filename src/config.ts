@@ -10,7 +10,8 @@ const DEFAULT_CONFIG: DatConfig = {
     trivy: { enabled: true },
     hadolint: { enabled: true },
     dockle: { enabled: true },
-    gitleaks: { enabled: true }
+    gitleaks: { enabled: true },
+    logicTests: { enabled: true, failOnMissingTests: true }
   },
   failOn: ['CRITICAL', 'HIGH']
 };

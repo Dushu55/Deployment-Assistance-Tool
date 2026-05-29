@@ -35,6 +35,15 @@ scanners:
     targetDir: "testing_data/llm_app"
   garak:
     enabled: true
+  gitleaks:
+    enabled: true
+  logicTests:
+    enabled: true
+    # Treat a missing test suite as a HIGH coverage-gap finding (set false to downgrade to INFO).
+    failOnMissingTests: true
+    # Optionally override the auto-detected test command, e.g. "npm test" or "pytest -q".
+    # command: "npm test"
+    targetDir: "testing_data/app"
 failOn:
   - CRITICAL
   - HIGH

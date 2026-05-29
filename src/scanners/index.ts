@@ -23,6 +23,7 @@ import { dotnetScaScanner } from './dotnetSca.js';
 import { clippyScanner } from './clippy.js';
 import { cargoAuditScanner } from './cargoAudit.js';
 import { gitleaksScanner } from './secrets.js';
+import { logicTestsScanner } from './logicTests.js';
 import { Scanner } from '../types.js';
 
 export const ALL_SCANNERS: Scanner[] = [
@@ -50,5 +51,6 @@ export const ALL_SCANNERS: Scanner[] = [
   dotnetScaScanner,
   clippyScanner,
   cargoAuditScanner,
-  gitleaksScanner
+  gitleaksScanner,
+  logicTestsScanner
 ];
