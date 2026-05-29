@@ -3,6 +3,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { runDatPipeline } from './orchestrator.js';
+import { buildComponentModel, writeComponentModel } from './components/builder.js';
+import { EnvironmentDetector } from './env.js';
 
 const program = new Command();
 
@@ -21,6 +23,7 @@ program
   .option('--csv <path>', 'Output results in CSV format', 'results/dat-report.csv')
   .option('--pdf <path>', 'Output results in professional PDF format', 'results/dat-report.pdf')
   .option('--fix-manifest <path>', 'Output machine-consumable findings for coding agents (Claude Code)', 'results/dat-fix-manifest.json')
+  .option('--component-model <path>', 'Emit the application/component graph (buttons, inputs, API calls, network) and link findings to components', 'results/dat-component-model.json')
   .option('--push-dojo', 'Push SARIF report to DefectDojo (requires env vars DEFECTDOJO_URL, DEFECTDOJO_API_KEY)')
   .option('--push-dtrack', 'Push SBOM to Dependency-Track (requires env vars DEPENDENCY_TRACK_URL, DEPENDENCY_TRACK_API_KEY)')
   .option('--only <scanners>', 'Run only specific scanners (comma-separated, e.g., semgrep,trivy)')
@@ -43,6 +46,32 @@ program
       }
     } catch (error: any) {
       console.log(chalk.red.bold('\n❌ Pipeline execution failed:'), error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('model')
+  .description('Build the application/component model (buttons, inputs, API calls, endpoints, network) without running scanners')
+  .option('-o, --out <path>', 'Output path for the component model JSON', 'results/dat-component-model.json')
+  .action(async (options) => {
+    try {
+      const detectedLanguages = new EnvironmentDetector().detectLanguages();
+      const graph = buildComponentModel(process.cwd(), { timestamp: new Date().toISOString(), detectedLanguages });
+      writeComponentModel(graph, options.out);
+
+      const counts = graph.nodes.reduce((acc: Record<string, number>, n) => {
+        acc[n.kind] = (acc[n.kind] || 0) + 1; return acc;
+      }, {});
+      console.log(chalk.blue.bold('\n🧩 Application Component Model'));
+      console.log(chalk.gray(`   Ecosystem: frontend=[${graph.ecosystem.frontend}] backend=[${graph.ecosystem.backend}] iac=[${graph.ecosystem.iac}]`));
+      Object.entries(counts).forEach(([kind, n]) => console.log(`   ${kind}: ${n}`));
+      console.log(chalk.gray(`   Cross-stack links: ${graph.edges.filter(e => e.kind === 'calls').length}`));
+      graph.coverage.forEach(c => console.log(chalk.gray(`   • ${c.extractor}: ${c.nodesFound} nodes / ${c.filesScanned} files — ${c.note}`)));
+      console.log(chalk.green(`\n💾 Component model saved to ${options.out}\n`));
+      process.exit(0);
+    } catch (error: any) {
+      console.log(chalk.red.bold('\n❌ Failed to build component model:'), error.message);
       process.exit(1);
     }
   });

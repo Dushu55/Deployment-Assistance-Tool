@@ -133,11 +133,9 @@ export function extractReactComponents(workspaceRoot: string): ExtractionResult 
     edges,
     coverage: {
       extractor: 'react',
-      filesScanned: jsxFiles.length,
+      filesScanned: codeFiles.length,
       nodesFound: nodes.length,
-      note: jsxFiles.length === 0
-        ? 'No JSX/TSX files found.'
-        : 'Heuristic JSX parsing (V1): dynamic element props and templated URLs captured best-effort; AST parsing planned.'
+      note: `Heuristic parsing (V1): ${jsxFiles.length} JSX/TSX file(s) scanned for UI elements, ${codeFiles.length} JS/TS file(s) for fetch/axios calls. Dynamic props and templated URLs captured best-effort; AST parsing planned.`
     }
   };
 }

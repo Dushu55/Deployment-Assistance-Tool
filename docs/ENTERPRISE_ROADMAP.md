@@ -139,6 +139,14 @@ The highest-leverage net-new artifact. Unblocks the entire "agent fixes it" loop
 
 ### Phase 2 — Application / Component Model  *(≈4–6 ew · Risk: Medium-High)*
 
+> **Status (2026-05-30): V1 DONE.** Typed `ComponentGraph` schema + three heuristic extractors
+> (React/JSX UI + fetch/axios calls, Express/Fastify/Next endpoints, Terraform AWS network),
+> cross-stack `ApiCall→ApiEndpoint` linkage, per-extractor coverage reporting, persistence, a
+> `dat model` command + `scan --component-model` flag, and `componentRef` attribution in the fix
+> manifest. 18 new tests. Extraction is heuristic (AST upgrade tracked); see
+> [COMPONENT_MODEL.md](COMPONENT_MODEL.md). Remaining for V2: `submits` edges (button→call), AST
+> parsing, non-AWS IaC, Vue/Angular.
+
 The conceptual heart of the product. Build a typed inventory of the application's components so evaluators can reason per-component.
 
 - [ ] Define a **Component graph schema**: node types `{ UIComponent, Input, Button, Form, ApiCall, ApiEndpoint, NetworkResource, AuthBoundary, DataStore }`, each with `location`, `attributes`, and `edges` (e.g., button → onClick handler → apiCall → endpoint).

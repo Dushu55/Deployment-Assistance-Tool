@@ -42,6 +42,7 @@ node dist/index.js scan --fix-manifest results/dat-fix-manifest.json
         "endLine": 4,
         "excerpt": "1: ...\n4: eval(userInput)\n..." // ±3 lines of context
       },
+      "componentRef": "ApiCall:src/a.ts:4:0", // owning component id (when scanned with --component-model), else null
       "suggestedFix": "remove eval", // may be null
       "verification": { "command": "npm test" }, // run after fixing to confirm
       "dependencies": [],            // findingIds to fix first (ordering hints)

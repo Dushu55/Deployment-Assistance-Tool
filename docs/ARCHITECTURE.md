@@ -88,6 +88,7 @@ graph TD;
 ```
 
 ## Core Components
+0. **Application Component Model (`src/components/`):** *(Phase 2)* Builds a typed graph of what the application is made of — `Button`/`Input`/`Form`/`ApiCall` (React/JSX), `ApiEndpoint` (Express/Fastify/Next), and `NetworkResource` (Terraform) — and links client API calls to the backend endpoints they hit. Persisted via `dat model` or `scan --component-model`; findings are attributed to components (`componentRef`) in the fix manifest. This is the foundation for per-component fail-safe/robustness evaluation (Phase 3). See [COMPONENT_MODEL.md](COMPONENT_MODEL.md).
 1. **Dynamic Environment Detector (`src/env.ts`):** Scans the workspace to identify the exact ecosystems present (`package.json`, `requirements.txt`, `go.mod`, etc.) and dynamically prunes unused scanners to optimize performance.
 2. **Execution Runner (`src/runner.ts`):** Safely spawns child processes for external tools with concurrency pooling, timeout handling, and `ENOENT` interception.
 3. **Polyglot Reachability Engine (`src/reachability/`):** Cross-references standard SCA vulnerabilities with **regex/import-heuristic** source analysis (true AST/call-graph reachability is planned — see roadmap). It scans import/use declarations across Node, Python, Java, C#, and Rust to flag whether a vulnerable dependency is referenced in the application tree, cutting false positives. It deliberately *fails open* (treats a package as reachable on any analysis error) so a heuristic miss never suppresses a real CVE.

@@ -7,6 +7,8 @@ import { generatePdf } from './reporters/pdf.js';
 import { pushToDefectDojo } from './reporters/defectdojo.js';
 import { pushToDependencyTrack } from './reporters/dependencyTrack.js';
 import { generateFixManifest } from './reporters/fixManifest.js';
+import { buildComponentModel, writeComponentModel } from './components/builder.js';
+import { ComponentGraph } from './components/types.js';
 import { AggregatedReport, ScannerResult } from './types.js';
 import { ALL_SCANNERS } from './scanners/index.js';
 import { calculateReadinessScore, deduplicateResults } from './utils.js';
@@ -55,6 +57,7 @@ export interface DatRunOptions {
   csv?: string;
   pdf?: string;
   fixManifest?: string; // machine-consumable findings for coding agents (Claude Code)
+  componentModel?: string; // emit the application/component graph (Phase 2)
   pushDojo?: boolean;
   pushDtrack?: boolean;
   only?: string;
@@ -348,6 +351,15 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       console.log(chalk.green.bold('\n✅ Quality Gate Passed.\n'));
   }
 
+  // 11.4 Build the application/component model (Phase 2) when requested, so the fix manifest
+  // can attribute findings to the component they belong to.
+  let componentGraph: ComponentGraph | undefined;
+  if (options.componentModel) {
+    componentGraph = buildComponentModel(process.cwd(), { timestamp: report.timestamp, detectedLanguages });
+    writeComponentModel(componentGraph, options.componentModel);
+    console.log(chalk.gray(`🧩 Component model saved to ${options.componentModel} (${componentGraph.nodes.length} components, ${componentGraph.edges.length} links)`));
+  }
+
   // 11.5 Emit the machine-consumable fix manifest for coding agents (Claude Code).
   // Generated after the gate so it records the final score and gate state.
   if (options.fixManifest) {
@@ -356,7 +368,8 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       verifyCommand: verifyCmd,
       failOn: config.failOn,
       readinessScore: score,
-      gatePassed: !failedGate
+      gatePassed: !failedGate,
+      componentGraph
     });
     console.log(chalk.gray(`🤖 Fix manifest saved to ${options.fixManifest} (consumable by Claude Code)`));
   }

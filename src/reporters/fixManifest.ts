@@ -3,6 +3,8 @@ import path from 'path';
 import { AggregatedReport, Severity, Issue } from '../types.js';
 import { ALL_SCANNERS } from '../scanners/index.js';
 import { issueFingerprint } from '../utils.js';
+import { ComponentGraph } from '../components/types.js';
+import { locateComponent } from '../components/builder.js';
 
 /**
  * The Fix Manifest is DAT's machine-consumable contract for coding agents (e.g. Claude Code).
@@ -26,6 +28,7 @@ export interface FixFinding {
   title: string;
   rationale: string;
   location: { file: string | null; startLine: number | null; endLine: number | null; excerpt: string | null };
+  componentRef: string | null; // id of the owning component in component-model.json (Phase 2), if known
   suggestedFix: string | null;
   verification: { command: string | null };
   dependencies: string[];
@@ -89,7 +92,7 @@ function readExcerpt(file?: string, line?: number, context: number = 3): string 
 
 export function buildFixManifest(
   report: AggregatedReport,
-  options: { verifyCommand?: string | null; failOn?: Severity[]; readinessScore?: number; gatePassed?: boolean } = {}
+  options: { verifyCommand?: string | null; failOn?: Severity[]; readinessScore?: number; gatePassed?: boolean; componentGraph?: ComponentGraph } = {}
 ): FixManifest {
   const failOn = options.failOn ?? ['CRITICAL', 'HIGH'];
   const findings: FixFinding[] = [];
@@ -116,6 +119,7 @@ export function buildFixManifest(
           endLine: issue.line ?? null,
           excerpt: readExcerpt(issue.file, issue.line)
         },
+        componentRef: options.componentGraph ? locateComponent(options.componentGraph, issue.file, issue.line) : null,
         suggestedFix: issue.remediation ?? null,
         verification: { command: options.verifyCommand ?? null },
         dependencies: [],
@@ -150,7 +154,7 @@ export function buildFixManifest(
 export function generateFixManifest(
   report: AggregatedReport,
   outputPath: string,
-  options: { verifyCommand?: string | null; failOn?: Severity[]; readinessScore?: number; gatePassed?: boolean } = {}
+  options: { verifyCommand?: string | null; failOn?: Severity[]; readinessScore?: number; gatePassed?: boolean; componentGraph?: ComponentGraph } = {}
 ): void {
   const manifest = buildFixManifest(report, options);
   const fullPath = path.resolve(process.cwd(), outputPath);
