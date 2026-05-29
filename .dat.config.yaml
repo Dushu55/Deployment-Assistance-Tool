@@ -1,3 +1,20 @@
+# --- Scanner selection ---------------------------------------------------------------
+# Simplest option: pick a profile instead of toggling 25 scanners by hand.
+#   profile: standard      # quick | standard | security | full
+# A profile (or --profile on the CLI) overrides the per-scanner `enabled` flags below.
+# Leave it unset to use the explicit per-scanner flags.
+#
+# autoDetect (default true): skip scanners whose expected input is absent (e.g. Checkov with
+# no IaC). Required-tier gaps (Dockerfile / tests / DAST target) are never hidden — they surface
+# in the preflight. Disable with `autoDetect: false` or the --no-auto-detect flag.
+# autoDetect: true
+#
+# preflight.required: which input categories block under `dat preflight --strict`.
+# Default: [dockerfile, testSuite, dastTarget, datConfig]
+# preflight:
+#   required: [dockerfile, testSuite, dastTarget, datConfig]
+# -------------------------------------------------------------------------------------
+
 scanners:
   semgrep:
     enabled: true

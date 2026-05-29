@@ -189,6 +189,18 @@ Per-component checks for fail-safe attributes, robustness, and coherence. Two ti
 - [ ] Hosted dashboard + trend reporting; quality-gate policy-as-code.
 - [ ] GA docs, SLAs, onboarding.
 
+#### End-user interface (selection & consumption)
+**Status (2026-05-30): config-as-code layer DONE.** Scanner selection no longer requires editing 25
+YAML toggles: **profiles** (`--profile quick|standard|security|full` / `profile:` in config) +
+**auto-detect** (skip scanners whose input is absent) + a **readiness preflight** (`dat preflight`)
+ship today. This deliberately keeps config-as-code simple enough that the future UI only needs to
+write a one-line `profile:`.
+- [ ] **Visual configuration UI (later, non-technical persona):** web dashboard / GitHub App settings
+  page with category-grouped toggles + thresholds, generating the same `.dat.config.yaml` (`profile:`
+  + overrides) underneath. Persona: managers / security leads / QA who configure without a terminal.
+- [ ] **Friendlier consumption:** plain-English PR comment + HTML report (pass/fail, blockers,
+  readiness score) so non-technical reviewers understand results without the CLI.
+
 ---
 
 ## 4. Sequencing & Dependencies

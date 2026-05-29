@@ -99,7 +99,11 @@ npm run build
 | Flag | Default | Description |
 |---|---|---|
 | `--config <path>` | `.dat.config.yaml` | Path to config file |
+| `--profile <name>` | — | Scanner preset: `quick` \| `standard` \| `security` \| `full` (overrides per-scanner flags) |
 | `--module <name>` | `all` | Run only a module: `static`, `security`, `container`, `testing`, `llm` |
+| `--no-auto-detect` | (auto-detect on) | Don't prune scanners whose expected input is absent |
+| `--skip-preflight` | (preflight on) | Skip the application-readiness check at scan start |
+| `--strict-preflight` | off | Abort the scan if a required input is missing |
 | `--url <url>` | — | Manual DAST target (ZAP/k6). Wins over `--deploy`. |
 | `--deploy` | off | Provision an ephemeral GCP Cloud Run preview, scan it, tear it down. |
 | `--only <scanners>` | — | Comma-separated allow-list: `--only semgrep,trivy` |
@@ -140,6 +144,50 @@ node dist/index.js scan --module security
 See exactly which scanners would run for the current workspace and config, without executing:
 ```bash
 node dist/index.js scan --dry-run
+```
+
+### Choosing Scanners the Easy Way: Profiles
+Instead of toggling 25 scanners in `.dat.config.yaml`, pick a **profile** — one word:
+
+```bash
+node dist/index.js scan --profile quick      # fast PR gate: SAST + secrets + tests
+node dist/index.js scan --profile standard   # + SCA, IaC, container, coverage
+node dist/index.js scan --profile security   # security-focused incl. DAST + LLM red-teaming
+node dist/index.js scan --profile full       # everything applicable to the project
+```
+Or set it once in `.dat.config.yaml`:
+```yaml
+profile: standard
+```
+A profile **overrides** the per-scanner `enabled` flags. Precedence: `--profile` flag → `profile:`
+in config → per-scanner `enabled` flags. Refine a profile further with `--only` / `--skip`.
+
+### Auto-Detect (no manual pruning)
+By default DAT **skips scanners whose expected input is absent** — e.g. Checkov when there's no IaC,
+Promptfoo with no `promptfooconfig.yaml`, Keploy with no `./keploy`. Each is logged
+(`↷ Skipping … not applicable`). Required-tier gaps (Dockerfile, tests, DAST target) are **never**
+hidden this way — they still surface in the preflight. Disable with `--no-auto-detect` or
+`autoDetect: false` in config. (Auto-detect is bypassed when you use `--only`, since that's explicit.)
+
+### Application Readiness Preflight (`dat preflight`)
+Verify the target app has the files needed for a *meaningful* scan, **before** you run one — so
+gaps aren't discovered mid-scan or hidden by silent-pass scanners:
+
+```bash
+node dist/index.js preflight                 # readiness checklist (warn, exit 0)
+node dist/index.js preflight --strict        # exit non-zero if a REQUIRED input is missing (CI gate)
+node dist/index.js preflight --profile security --url https://app.example.com
+```
+It reports, per enabled scanner, whether each expected input is present (✅), advisory-missing (⚠️),
+or required-missing (❌), plus any missing CLI tools. **Required tier** (blocks under `--strict`):
+Dockerfile, test suite, DAST target, `.dat.config.yaml`. Everything else (IaC, manifests, lockfiles,
+promptfoo/keploy configs, container image) is advisory. Override the required set via
+`preflight.required` in config.
+
+`dat scan` runs this check automatically at startup (warn mode); pass `--skip-preflight` to bypass
+it, or `--strict-preflight` to abort the scan when a required input is missing. Typical CI usage:
+```bash
+node dist/index.js preflight --strict && node dist/index.js scan --profile standard
 ```
 
 ---
