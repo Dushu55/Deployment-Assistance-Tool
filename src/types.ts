@@ -1,5 +1,7 @@
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
 
+export type ProfileName = 'quick' | 'standard' | 'full' | 'security';
+
 export interface Issue {
   id: string;          // e.g., 'rule-id' or 'CVE-2024-1234'
   severity: Severity;
@@ -65,6 +67,9 @@ export interface DatConfig {
     gitleaks?: { enabled: boolean; targetDir?: string };
   };
   failOn: Severity[]; // e.g., ['CRITICAL', 'HIGH']
+  profile?: ProfileName;                  // one-word scanner selection; overrides per-scanner enabled flags
+  autoDetect?: boolean;                   // prune scanners whose advisory inputs are absent (default true)
+  preflight?: { required?: InputCategory[] }; // override which input categories are "required" tier
   deployer?: {
     enabled?: boolean;
     provider?: 'gcp' | 'vercel';
@@ -89,6 +94,21 @@ export interface ScannerContext {
 
 export type SupportedLanguage = 'node' | 'python' | 'go' | 'java' | 'csharp' | 'rust';
 
+// Categories of target-application input a scanner needs to do meaningful work.
+// The first four are the "required" tier by default (block under preflight --strict);
+// the rest are advisory (warn only, and drive auto-detect pruning).
+export type InputCategory =
+  | 'dockerfile' | 'testSuite' | 'dastTarget' | 'datConfig'
+  | 'iac' | 'deps' | 'lockfile' | 'promptfoo' | 'apiTests' | 'image';
+
+export interface ExpectedInput {
+  label: string;                 // human label, e.g. "Dockerfile"
+  category: InputCategory;
+  anyOf?: string[];              // present if any of these root-relative files exist
+  anyExtRecursive?: string[];    // present if any file with these extensions exists (e.g. ['.tf'])
+  kind?: 'file' | 'url' | 'testSuite' | 'image'; // special resolution; defaults to 'file'
+}
+
 export interface Scanner {
   name: string;
   module: 'static' | 'security' | 'container' | 'testing' | 'llm';
@@ -98,5 +118,9 @@ export interface Scanner {
   // are missing, so an absent tool never masquerades as "ran clean". Omit when the
   // tool is project-local (npx) or resolved conditionally at runtime.
   requiredBinaries?: string[];
+  // Target-application inputs this scanner needs (e.g. a Dockerfile, a test suite, a DAST URL).
+  // Powers the readiness preflight and auto-detect pruning. Omit for pure source scanners
+  // (the code is always present).
+  expectedInputs?: ExpectedInput[];
   run(context: ScannerContext): Promise<ScannerResult>;
 }

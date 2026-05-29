@@ -121,6 +121,7 @@ export const trivyScanner: Scanner = {
   module: 'security',
   supportedLanguages: 'all',
   requiredBinaries: ['trivy'],
+  expectedInputs: [{ label: 'Dependency manifest', category: 'deps', anyOf: ['package.json', 'requirements.txt', 'go.mod', 'pom.xml', 'Cargo.lock', 'Gemfile', 'composer.json'] }],
   async run(ctx) {
     const generateSbom = ctx.config.scanners.trivy?.generateSbom || false;
     const sbomPath = ctx.config.scanners.trivy?.sbomPath || 'results/bom.json';

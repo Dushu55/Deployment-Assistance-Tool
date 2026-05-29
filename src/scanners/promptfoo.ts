@@ -64,6 +64,7 @@ export const promptfooScanner: Scanner = {
   name: 'Promptfoo',
   module: 'llm',
   supportedLanguages: 'all',
+  expectedInputs: [{ label: 'promptfooconfig.yaml', category: 'promptfoo', anyOf: ['promptfooconfig.yaml', 'promptfooconfig.yml'] }],
   async run(ctx) {
     const dir = ctx.config.scanners.promptfoo?.targetDir || '.';
     return runPromptfoo(dir);

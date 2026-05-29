@@ -58,6 +58,7 @@ export const checkovScanner: Scanner = {
   module: 'security',
   supportedLanguages: 'all',
   requiredBinaries: ['checkov'],
+  expectedInputs: [{ label: 'IaC files (Terraform/Dockerfile)', category: 'iac', anyOf: ['Dockerfile'], anyExtRecursive: ['.tf'] }],
   async run(ctx) {
     const targetDir = ctx.config.scanners.checkov?.targetDir || '.';
     return runCheckov(targetDir);

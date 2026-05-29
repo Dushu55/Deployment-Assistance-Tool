@@ -104,6 +104,7 @@ export const hadolintScanner: Scanner = {
   module: 'container',
   supportedLanguages: 'all',
   requiredBinaries: ['hadolint'],
+  expectedInputs: [{ label: 'Dockerfile', category: 'dockerfile', anyOf: ['Dockerfile'] }],
   async run(ctx) {
     const target = ctx.config.scanners.hadolint?.target || 'testing_data/Dockerfile';
     const enableAutoFix = ctx.config.autoFix?.enabled ?? true;

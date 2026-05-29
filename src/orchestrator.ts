@@ -9,7 +9,7 @@ import { pushToDependencyTrack } from './reporters/dependencyTrack.js';
 import { generateFixManifest } from './reporters/fixManifest.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
 import { ComponentGraph } from './components/types.js';
-import { AggregatedReport, ScannerResult } from './types.js';
+import { AggregatedReport, ScannerResult, DatConfig, Scanner, SupportedLanguage } from './types.js';
 import { ALL_SCANNERS } from './scanners/index.js';
 import { calculateReadinessScore, deduplicateResults } from './utils.js';
 import { activeProcesses } from './runner.js';
@@ -65,6 +65,23 @@ export const CONFIG_KEYS: Record<string, string> = {
   'Gitleaks (Secrets)': 'gitleaks',
   'Logic Tests': 'logicTests'
 };
+
+/**
+ * Single source of truth for "which scanners are active" — used by the orchestrator, the
+ * readiness preflight, and profile selection. A scanner is active when it is enabled (by config)
+ * AND supports a detected language (or is language-agnostic).
+ */
+export function getEnabledScanners(config: DatConfig, detectedLanguages: SupportedLanguage[]): Scanner[] {
+  return ALL_SCANNERS.filter(scanner => {
+    const key = CONFIG_KEYS[scanner.name];
+    if (!key) return false;
+    const scannerConfig = (config.scanners as any)[key];
+    if (scannerConfig?.enabled !== true) return false;
+
+    if (scanner.supportedLanguages === 'all') return true;
+    return scanner.supportedLanguages.some(lang => detectedLanguages.includes(lang));
+  });
+}
 
 export interface DatRunOptions {
   config?: string;
@@ -166,15 +183,7 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   const config = loadConfig(configPath);
   
   // 2. Identify enabled scanners from config and support for current languages
-  let scannersToRun = ALL_SCANNERS.filter(scanner => {
-    const key = CONFIG_KEYS[scanner.name];
-    if (!key) return false;
-    const scannerConfig = (config.scanners as any)[key];
-    if (scannerConfig?.enabled !== true) return false;
-
-    if (scanner.supportedLanguages === 'all') return true;
-    return scanner.supportedLanguages.some(lang => detectedLanguages.includes(lang));
-  });
+  let scannersToRun = getEnabledScanners(config, detectedLanguages);
 
   // 3. Apply CLI/Options filter overrides
   if (options.module && options.module !== 'all') {

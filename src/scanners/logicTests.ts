@@ -204,6 +204,7 @@ export const logicTestsScanner: Scanner = {
   name: 'Logic Tests',
   module: 'testing',
   supportedLanguages: 'all',
+  expectedInputs: [{ label: 'Test suite / command', category: 'testSuite', kind: 'testSuite' }],
   async run(ctx) {
     const cfg = ctx.config.scanners.logicTests;
     const targetDir = cfg?.targetDir || '.';

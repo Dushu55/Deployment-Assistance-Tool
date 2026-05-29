@@ -93,6 +93,7 @@ export const pipAuditScanner: Scanner = {
   module: 'security',
   supportedLanguages: ['python'],
   requiredBinaries: ['pip-audit'],
+  expectedInputs: [{ label: 'requirements.txt', category: 'lockfile', anyOf: ['requirements.txt'] }],
   async run(ctx) {
     const targetFile = (ctx.config.scanners as any).pipAudit?.targetFile || 'requirements.txt';
     return runPipAudit(targetFile, ctx.detectedLanguages);

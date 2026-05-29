@@ -84,6 +84,7 @@ export const garakScanner: Scanner = {
   module: 'llm',
   supportedLanguages: 'all',
   requiredBinaries: ['python3'],
+  expectedInputs: [{ label: 'DAST target URL (LLM endpoint)', category: 'dastTarget', kind: 'url' }],
   async run(ctx) {
     return runGarak(ctx.url);
   }
