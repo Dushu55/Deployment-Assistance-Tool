@@ -15,12 +15,20 @@ export function printReport(report: AggregatedReport): void {
 
   let totalIssues = 0;
 
+  let skippedCount = 0;
+
   report.results.forEach((res) => {
+    if (res.skipped) {
+      skippedCount++;
+      console.log(chalk.bold(`\n🛠️  Scanner: ${res.scannerName} ${chalk.yellow('[SKIPPED]')}`));
+      console.log(chalk.yellow(`   ⤼ ${res.skipReason || 'Tool unavailable.'}`));
+      return;
+    }
     console.log(chalk.bold(`\n🛠️  Scanner: ${res.scannerName} ${res.success ? chalk.green('[SUCCESS]') : chalk.red('[FAILED]')}`));
     if (res.error) {
       console.log(chalk.red(`   Error: ${res.error}`));
     }
-    
+
     if (res.issues.length === 0) {
       console.log(chalk.green('   ✅ No issues found.'));
     } else {
@@ -42,5 +50,9 @@ export function printReport(report: AggregatedReport): void {
   console.log(`   MEDIUM:   ${SEVERITY_COLORS.MEDIUM(` ${report.summary.medium} `)}`);
   console.log(`   LOW:      ${SEVERITY_COLORS.LOW(` ${report.summary.low} `)}`);
   console.log(`   INFO:     ${SEVERITY_COLORS.INFO(` ${report.summary.info} `)}`);
-  console.log(`\n   Total Issues: ${totalIssues}\n`);
+  console.log(`\n   Total Issues: ${totalIssues}`);
+  if (skippedCount > 0) {
+    console.log(chalk.yellow(`   ⚠️  ${skippedCount} scanner(s) SKIPPED (tool unavailable) — coverage is incomplete.`));
+  }
+  console.log('');
 }

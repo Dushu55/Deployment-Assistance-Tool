@@ -70,6 +70,7 @@ export const dockleScanner: Scanner = {
   name: 'Dockle',
   module: 'container',
   supportedLanguages: 'all',
+  requiredBinaries: ['docker'],
   async run(ctx) {
     const image = ctx.config.scanners.dockle?.imageName || 'project-image:latest';
     return runDockle(image);

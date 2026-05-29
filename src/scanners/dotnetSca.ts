@@ -100,6 +100,7 @@ export const dotnetScaScanner: Scanner = {
   name: '.NET NuGet Audit',
   module: 'security',
   supportedLanguages: ['csharp'],
+  requiredBinaries: ['dotnet'],
   async run(ctx) {
     return runDotnetSca(process.cwd(), ctx.detectedLanguages);
   }

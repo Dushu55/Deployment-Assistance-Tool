@@ -82,6 +82,7 @@ export const clippyScanner: Scanner = {
   name: 'Clippy',
   module: 'static',
   supportedLanguages: ['rust'],
+  requiredBinaries: ['cargo'],
   async run(ctx) {
     return runClippy(process.cwd());
   }

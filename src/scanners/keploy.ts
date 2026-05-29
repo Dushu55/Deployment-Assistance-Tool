@@ -46,6 +46,7 @@ export const keployScanner: Scanner = {
   name: 'Keploy API Tests',
   module: 'testing',
   supportedLanguages: 'all',
+  requiredBinaries: ['keploy'],
   async run(ctx) {
     const appCmd = ctx.config.scanners.keploy?.appCmd || 'npm start';
     return runKeploy(appCmd);

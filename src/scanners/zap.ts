@@ -5,15 +5,25 @@ import { isSafeUrl } from '../utils/security.js';
 import fs from 'fs';
 import path from 'path';
 
-export async function runZap(url?: string, authToken?: string): Promise<ScannerResult> {
+export async function runZap(url?: string, authToken?: string, failOnMissingTarget: boolean = true): Promise<ScannerResult> {
   const startTime = Date.now();
-  
+
   if (!url) {
+    // Do NOT silently pass: a missing DAST target means dynamic vulnerabilities (XSS, CSRF,
+    // SQLi, broken auth) were never tested. Surface this as a gate-relevant coverage gap.
+    // For static-only repos, disable the zap scanner or set failOnMissingTarget: false.
     return {
       scannerName: 'OWASP ZAP',
-      success: true, 
+      success: true,
       durationMs: 0,
-      issues: [{ id: 'NO-URL', severity: 'INFO', message: 'No URL provided for DAST scanning. Use --url <target> to enable.', source: 'OWASP ZAP' }]
+      issues: [{
+        id: 'DAST-COVERAGE-GAP',
+        severity: failOnMissingTarget ? 'HIGH' : 'INFO',
+        message: 'No target URL was available for DAST scanning, so dynamic vulnerabilities ' +
+          '(XSS, CSRF, SQLi, broken authorization) were NOT tested. Provide --url <target> ' +
+          '(or ensure the ephemeral deployment succeeds) to enable active scanning.',
+        source: 'OWASP ZAP'
+      }]
     };
   }
 
@@ -115,7 +125,8 @@ export const zapScanner: Scanner = {
   name: 'OWASP ZAP',
   module: 'security',
   supportedLanguages: 'all',
+  requiredBinaries: ['docker'],
   async run(ctx) {
-    return runZap(ctx.url, ctx.authToken);
+    return runZap(ctx.url, ctx.authToken, ctx.config.scanners.zap?.failOnMissingTarget ?? true);
   }
 };

@@ -4,15 +4,24 @@ import { isSafeUrl } from '../utils/security.js';
 import fs from 'fs';
 import path from 'path';
 
-export async function runK6(targetUrl?: string, thresholdMs: number = 500, authToken?: string): Promise<ScannerResult> {
+export async function runK6(targetUrl?: string, thresholdMs: number = 500, authToken?: string, failOnMissingTarget: boolean = true): Promise<ScannerResult> {
   const startTime = Date.now();
-  
+
   if (!targetUrl) {
+    // Do NOT silently pass: without a target, performance/robustness under load was never
+    // measured. Surface as a gate-relevant coverage gap (disable k6 or set
+    // failOnMissingTarget: false for static-only repos).
     return {
       scannerName: 'k6 Load Test',
       success: true,
       durationMs: 0,
-      issues: [{ id: 'NO-URL', severity: 'INFO', message: 'No target URL provided for Load testing. Use --url to enable.', source: 'k6' }]
+      issues: [{
+        id: 'LOAD-COVERAGE-GAP',
+        severity: failOnMissingTarget ? 'HIGH' : 'INFO',
+        message: 'No target URL was available for load testing, so performance and robustness ' +
+          'under load were NOT measured. Provide --url to enable.',
+        source: 'k6'
+      }]
     };
   }
 
@@ -154,8 +163,9 @@ export const k6Scanner: Scanner = {
   name: 'k6 Load Test',
   module: 'testing',
   supportedLanguages: 'all',
+  requiredBinaries: ['k6'],
   async run(ctx) {
     const thresholdMs = ctx.config.scanners.k6?.thresholdMs || 500;
-    return runK6(ctx.url, thresholdMs, ctx.authToken);
+    return runK6(ctx.url, thresholdMs, ctx.authToken, ctx.config.scanners.k6?.failOnMissingTarget ?? true);
   }
 };

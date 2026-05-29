@@ -104,6 +104,7 @@ export const cargoAuditScanner: Scanner = {
   name: 'cargo-audit',
   module: 'security',
   supportedLanguages: ['rust'],
+  requiredBinaries: ['cargo'],
   async run(ctx) {
     return runCargoAudit(process.cwd(), ctx.detectedLanguages);
   }

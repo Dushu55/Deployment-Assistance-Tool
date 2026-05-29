@@ -14,6 +14,7 @@ import { AstGrepAutoFixer } from './autofix/index.js';
 import { logger } from './logger.js';
 import { EnvironmentDetector } from './env.js';
 import { emitAuditStart, emitAuditEnd, AuditContext } from './audit.js';
+import { missingBinaries } from './utils/preflight.js';
 
 export const CONFIG_KEYS: Record<string, string> = {
   'Semgrep': 'semgrep',
@@ -193,8 +194,32 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
 
   const totalStartTime = Date.now();
 
+  // 4.5 Preflight: probe each scanner's required external tools. Missing tools yield an
+  // explicit SKIPPED result (distinct from "ran clean") so absent scanners never silently
+  // inflate the readiness score or hide coverage gaps.
+  const skippedResults: ScannerResult[] = [];
+  const runnableScanners: typeof scannersToRun = [];
+  for (const scanner of scannersToRun) {
+    const missing = await missingBinaries(scanner.requiredBinaries);
+    if (missing.length > 0) {
+      const reason = `Required tool(s) not found on PATH: ${missing.join(', ')}`;
+      console.log(chalk.yellow(`⤼ Skipping ${scanner.name} — ${reason}`));
+      skippedResults.push({
+        scannerName: scanner.name,
+        success: true,
+        skipped: true,
+        skipReason: reason,
+        durationMs: 0,
+        issues: []
+      });
+    } else {
+      runnableScanners.push(scanner);
+    }
+  }
+
   console.log(chalk.gray('\nExecuting scanners with a concurrency limit of 4...'));
-  const results = await runWithConcurrencyLimit(scannersToRun, { config, url: options.url, authToken: options.authToken, detectedLanguages }, 4);
+  const runResults = await runWithConcurrencyLimit(runnableScanners, { config, url: options.url, authToken: options.authToken, detectedLanguages }, 4);
+  const results = [...skippedResults, ...runResults];
 
   // 5.5 Trigger AST Auto-Fixer ONLY when explicitly enabled.
   // Auto-fix mutates the working tree, so it is OFF by default for `scan`. Enable it via

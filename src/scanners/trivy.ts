@@ -120,6 +120,7 @@ export const trivyScanner: Scanner = {
   name: 'Trivy',
   module: 'security',
   supportedLanguages: 'all',
+  requiredBinaries: ['trivy'],
   async run(ctx) {
     const generateSbom = ctx.config.scanners.trivy?.generateSbom || false;
     const sbomPath = ctx.config.scanners.trivy?.sbomPath || 'results/bom.json';

@@ -103,5 +103,6 @@ export const sonarqubeScanner: Scanner = {
   name: 'SonarQube',
   module: 'static',
   supportedLanguages: 'all',
+  requiredBinaries: ['sonar-scanner'],
   async run(ctx) { return runSonarQube(); }
 };

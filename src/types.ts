@@ -16,6 +16,8 @@ export interface ScannerResult {
   durationMs: number;
   issues: Issue[];
   error?: string;
+  skipped?: boolean;        // true when preflight found the underlying tool unavailable
+  skipReason?: string;      // human-readable reason a scanner was skipped
 }
 
 export interface AggregatedReport {
@@ -42,11 +44,11 @@ export interface DatConfig {
     sonarqube?: { enabled: boolean };
     checkov?: { enabled: boolean; targetDir?: string };
     osv?: { enabled: boolean; targetDir?: string };
-    zap?: { enabled: boolean };
+    zap?: { enabled: boolean; failOnMissingTarget?: boolean };
     jest?: { enabled: boolean; threshold?: number; targetDir?: string };
     coverAgent?: { enabled: boolean; sourceFilePath?: string; testFilePath?: string; testCommand?: string };
     keploy?: { enabled: boolean; appCmd?: string };
-    k6?: { enabled: boolean; thresholdMs?: number };
+    k6?: { enabled: boolean; thresholdMs?: number; failOnMissingTarget?: boolean };
     logicTests?: { enabled: boolean; command?: string; targetDir?: string; failOnMissingTests?: boolean };
     promptfoo?: { enabled: boolean; targetDir?: string };
     garak?: { enabled: boolean };
@@ -78,5 +80,10 @@ export interface Scanner {
   name: string;
   module: 'static' | 'security' | 'container' | 'testing' | 'llm';
   supportedLanguages: SupportedLanguage[] | 'all';
+  // External executables this scanner needs on PATH. The orchestrator probes these
+  // before running and marks the scanner SKIPPED (distinct from a clean pass) when any
+  // are missing, so an absent tool never masquerades as "ran clean". Omit when the
+  // tool is project-local (npx) or resolved conditionally at runtime.
+  requiredBinaries?: string[];
   run(context: ScannerContext): Promise<ScannerResult>;
 }

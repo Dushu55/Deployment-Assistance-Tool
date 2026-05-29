@@ -54,6 +54,7 @@ export const coverAgentScanner: Scanner = {
   name: 'Qodo Cover-Agent',
   module: 'testing',
   supportedLanguages: 'all',
+  requiredBinaries: ['cover-agent'],
   async run(ctx) {
     const config = ctx.config.scanners.coverAgent;
     return runCoverAgent(config?.sourceFilePath, config?.testFilePath, config?.testCommand);

@@ -93,6 +93,7 @@ export const semgrepScanner: Scanner = {
   name: 'Semgrep',
   module: 'static',
   supportedLanguages: 'all',
+  requiredBinaries: ['semgrep'],
   async run(ctx) {
     const rules = ctx.config.scanners.semgrep?.rules || ['p/security-audit'];
     const customRulesDir = ctx.config.scanners.semgrep?.customRulesDir || 'rules';

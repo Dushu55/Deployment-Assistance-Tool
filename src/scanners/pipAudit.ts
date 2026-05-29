@@ -92,6 +92,7 @@ export const pipAuditScanner: Scanner = {
   name: 'pip-audit',
   module: 'security',
   supportedLanguages: ['python'],
+  requiredBinaries: ['pip-audit'],
   async run(ctx) {
     const targetFile = (ctx.config.scanners as any).pipAudit?.targetFile || 'requirements.txt';
     return runPipAudit(targetFile, ctx.detectedLanguages);

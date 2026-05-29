@@ -65,6 +65,7 @@ export const banditScanner: Scanner = {
   name: 'Bandit',
   module: 'static',
   supportedLanguages: ['python'],
+  requiredBinaries: ['bandit'],
   async run(ctx) {
     const targetDir = (ctx.config.scanners as any).bandit?.targetDir || '.';
     return runBandit(targetDir);

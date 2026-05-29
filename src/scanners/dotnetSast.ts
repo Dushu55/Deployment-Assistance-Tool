@@ -73,6 +73,7 @@ export const dotnetSastScanner: Scanner = {
   name: '.NET Analyzers',
   module: 'static',
   supportedLanguages: ['csharp'],
+  requiredBinaries: ['dotnet'],
   async run(ctx) {
     return runDotnetSast(process.cwd());
   }

@@ -62,6 +62,7 @@ export const gosecScanner: Scanner = {
   name: 'gosec',
   module: 'static',
   supportedLanguages: ['go'],
+  requiredBinaries: ['gosec'],
   async run(ctx) {
     const targetDir = (ctx.config.scanners as any).gosec?.targetDir || './...';
     return runGosec(targetDir);

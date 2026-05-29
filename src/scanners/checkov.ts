@@ -57,6 +57,7 @@ export const checkovScanner: Scanner = {
   name: 'Checkov',
   module: 'security',
   supportedLanguages: 'all',
+  requiredBinaries: ['checkov'],
   async run(ctx) {
     const targetDir = ctx.config.scanners.checkov?.targetDir || '.';
     return runCheckov(targetDir);

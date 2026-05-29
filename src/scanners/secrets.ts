@@ -77,6 +77,7 @@ export const gitleaksScanner: Scanner = {
   name: 'Gitleaks (Secrets)',
   module: 'security',
   supportedLanguages: 'all',
+  requiredBinaries: ['gitleaks'],
   async run(ctx) {
     const targetDir = ctx.config.scanners.gitleaks?.targetDir || '.';
     return runGitleaks(targetDir);

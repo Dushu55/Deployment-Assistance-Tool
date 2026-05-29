@@ -86,6 +86,7 @@ export const osvScanner: Scanner = {
   name: 'OSV-Scanner',
   module: 'security',
   supportedLanguages: 'all',
+  requiredBinaries: ['osv-scanner'],
   async run(ctx) {
     const targetDir = ctx.config.scanners.osv?.targetDir || '.';
     return runOsvScanner(targetDir, ctx.detectedLanguages);

@@ -81,6 +81,7 @@ export const govulncheckScanner: Scanner = {
   name: 'govulncheck',
   module: 'security',
   supportedLanguages: ['go'],
+  requiredBinaries: ['govulncheck'],
   async run(ctx) {
     const targetDir = (ctx.config.scanners as any).govulncheck?.targetDir || './...';
     return runGovulncheck(targetDir);
