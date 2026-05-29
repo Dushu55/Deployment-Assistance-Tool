@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { mapSeverity, calculateReadinessScore } from './utils.js';
+import { mapSeverity, calculateReadinessScore, deduplicateResults, issueFingerprint } from './utils.js';
+import { ScannerResult } from './types.js';
 
 test('mapSeverity', async (t) => {
   await t.test('maps known severities', () => {
@@ -53,5 +54,51 @@ test('calculateReadinessScore', async (t) => {
     const base = calculateReadinessScore({ ...empty, high: 1 });
     const more = calculateReadinessScore({ ...empty, high: 2 });
     assert.ok(more <= base);
+  });
+});
+
+test('issueFingerprint', async (t) => {
+  await t.test('normalises leading ./ so prefixed and bare paths collapse', () => {
+    assert.strictEqual(
+      issueFingerprint({ id: 'CVE-1', file: './src/a.ts', line: 5 }),
+      issueFingerprint({ id: 'CVE-1', file: 'src/a.ts', line: 5 })
+    );
+  });
+
+  await t.test('uses "global" for fileless findings', () => {
+    assert.strictEqual(issueFingerprint({ id: 'X' }), 'X::global');
+  });
+});
+
+test('deduplicateResults', async (t) => {
+  const mk = (name: string, issues: any[]): ScannerResult => ({
+    scannerName: name, success: true, durationMs: 1, issues
+  });
+
+  await t.test('drops the same CVE reported by two scanners (first wins)', () => {
+    const results = [
+      mk('Trivy', [{ id: 'CVE-2024-1', severity: 'HIGH', message: 'a', file: 'pkg.json', source: 'Trivy' }]),
+      mk('OSV', [{ id: 'CVE-2024-1', severity: 'HIGH', message: 'a', file: 'pkg.json', source: 'OSV' }])
+    ];
+    const deduped = deduplicateResults(results);
+    assert.strictEqual(deduped[0].issues.length, 1);
+    assert.strictEqual(deduped[1].issues.length, 0);
+  });
+
+  await t.test('keeps distinct findings (different line or id)', () => {
+    const results = [
+      mk('Semgrep', [
+        { id: 'rule-a', severity: 'HIGH', message: 'm', file: 'x.ts', line: 1, source: 'Semgrep' },
+        { id: 'rule-a', severity: 'HIGH', message: 'm', file: 'x.ts', line: 2, source: 'Semgrep' },
+        { id: 'rule-b', severity: 'LOW', message: 'm', file: 'x.ts', line: 1, source: 'Semgrep' }
+      ])
+    ];
+    assert.strictEqual(deduplicateResults(results)[0].issues.length, 3);
+  });
+
+  await t.test('does not mutate the input', () => {
+    const results = [mk('A', [{ id: 'd', severity: 'LOW', message: 'm', source: 'A' }, { id: 'd', severity: 'LOW', message: 'm', source: 'A' }])];
+    deduplicateResults(results);
+    assert.strictEqual(results[0].issues.length, 2, 'original results should be untouched');
   });
 });

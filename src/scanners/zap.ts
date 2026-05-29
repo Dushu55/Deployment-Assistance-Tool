@@ -5,6 +5,28 @@ import { isSafeUrl } from '../utils/security.js';
 import fs from 'fs';
 import path from 'path';
 
+// Pure parser for ZAP's JSON report, extracted for unit testing.
+export function parseZapResults(parsedOutput: any, url: string): Issue[] {
+  const issues: Issue[] = [];
+  if (parsedOutput?.site && Array.isArray(parsedOutput.site)) {
+    parsedOutput.site.forEach((site: any) => {
+      if (site.alerts) {
+        site.alerts.forEach((alert: any) => {
+          issues.push({
+            id: alert.pluginid,
+            severity: mapSeverity(alert.riskdesc),
+            message: `${alert.name}: ${(alert.desc || '').replace(/<[^>]*>?/gm, '').substring(0, 100)}...`,
+            file: url,
+            remediation: alert.solution ? alert.solution.replace(/<[^>]*>?/gm, '').substring(0, 150) : undefined,
+            source: 'OWASP ZAP'
+          });
+        });
+      }
+    });
+  }
+  return issues;
+}
+
 export async function runZap(url?: string, authToken?: string, failOnMissingTarget: boolean = true): Promise<ScannerResult> {
   const startTime = Date.now();
 
@@ -90,24 +112,7 @@ export async function runZap(url?: string, authToken?: string, failOnMissingTarg
       return { scannerName: 'OWASP ZAP', success: false, durationMs, issues: [], error: `JSON Parse error: ${e}` };
     }
 
-    const issues: Issue[] = [];
-    
-    if (parsedOutput.site && Array.isArray(parsedOutput.site)) {
-      parsedOutput.site.forEach((site: any) => {
-        if (site.alerts) {
-          site.alerts.forEach((alert: any) => {
-            issues.push({
-              id: alert.pluginid,
-              severity: mapSeverity(alert.riskdesc),
-              message: `${alert.name}: ${alert.desc.replace(/<[^>]*>?/gm, '').substring(0, 100)}...`, // Strip HTML tags
-              file: url,
-              remediation: alert.solution ? alert.solution.replace(/<[^>]*>?/gm, '').substring(0, 150) : undefined,
-              source: 'OWASP ZAP'
-            });
-          });
-        }
-      });
-    }
+    const issues: Issue[] = parseZapResults(parsedOutput, url);
 
     // Cleanup report file
     fs.unlinkSync(reportPath);

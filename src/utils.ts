@@ -1,4 +1,4 @@
-import { Severity } from './types.js';
+import { Severity, ScannerResult } from './types.js';
 
 /**
  * Maps varying severity strings from different scanner tools to the unified Severity type.
@@ -25,6 +25,35 @@ export function mapSeverity(level: string): Severity {
     default:
       return 'HIGH';
   }
+}
+
+/**
+ * Stable fingerprint for an issue: `id::file[:line]`, with leading `./` normalised so the
+ * same finding reported by two scanners with differing path prefixes collapses to one.
+ */
+export function issueFingerprint(issue: { id: string; file?: string; line?: number }): string {
+  const file = issue.file ? issue.file.replace(/^\.\//, '') : 'global';
+  const line = issue.line ? `:${issue.line}` : '';
+  return `${issue.id}::${file}${line}`;
+}
+
+/**
+ * Deduplicates issues across all scanner results using a global fingerprint set.
+ * The first occurrence of a fingerprint wins; later duplicates (e.g. the same CVE found by
+ * both Trivy and OSV) are dropped so they don't inflate the summary, score, or gate.
+ * Returns new result objects; inputs are not mutated.
+ */
+export function deduplicateResults(results: ScannerResult[]): ScannerResult[] {
+  const seen = new Set<string>();
+  return results.map(res => {
+    const deduped = res.issues.filter(issue => {
+      const fp = issueFingerprint(issue);
+      if (seen.has(fp)) return false;
+      seen.add(fp);
+      return true;
+    });
+    return { ...res, issues: deduped };
+  });
 }
 
 // Per-severity weight applied to the (dampened) finding count.

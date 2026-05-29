@@ -14,6 +14,19 @@ function mapSemgrepSeverity(semgrepSeverity: string): Severity {
   }
 }
 
+// Pure parser for Semgrep's --json output, extracted for unit testing.
+export function parseSemgrepResults(parsedOutput: any): Issue[] {
+  return (parsedOutput?.results || []).map((r: any) => ({
+    id: r.check_id,
+    severity: mapSemgrepSeverity(r.extra?.severity || 'INFO'),
+    message: r.extra?.message || 'No message provided',
+    file: r.path,
+    line: r.start?.line,
+    remediation: r.extra?.fix || r.extra?.metadata?.remediation,
+    source: 'Semgrep'
+  }));
+}
+
 export async function runSemgrep(rules: string[] = ['p/security-audit'], customRulesDir: string = 'rules'): Promise<ScannerResult> {
   const startTime = Date.now();
   try {
@@ -61,15 +74,7 @@ export async function runSemgrep(rules: string[] = ['p/security-audit'], customR
       };
     }
 
-    const issues: Issue[] = parsedOutput.results.map((r: any) => ({
-      id: r.check_id,
-      severity: mapSemgrepSeverity(r.extra?.severity || 'INFO'),
-      message: r.extra?.message || 'No message provided',
-      file: r.path,
-      line: r.start?.line,
-      remediation: r.extra?.fix || r.extra?.metadata?.remediation,
-      source: 'Semgrep'
-    }));
+    const issues: Issue[] = parseSemgrepResults(parsedOutput);
 
     return {
       scannerName: 'Semgrep',

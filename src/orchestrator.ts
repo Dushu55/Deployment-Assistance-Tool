@@ -8,7 +8,7 @@ import { pushToDefectDojo } from './reporters/defectdojo.js';
 import { pushToDependencyTrack } from './reporters/dependencyTrack.js';
 import { AggregatedReport, ScannerResult } from './types.js';
 import { ALL_SCANNERS } from './scanners/index.js';
-import { calculateReadinessScore } from './utils.js';
+import { calculateReadinessScore, deduplicateResults } from './utils.js';
 import { activeProcesses } from './runner.js';
 import { AstGrepAutoFixer } from './autofix/index.js';
 import { logger } from './logger.js';
@@ -251,24 +251,8 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     console.log(chalk.gray(`\n🛠️  Auto-fix disabled (pass --auto-fix or set autoFix.enabled to remediate).`));
   }
 
-  // 6. Aggregate and Deduplicate Results
-  const uniqueIssues = new Set<string>();
-  const deduplicatedResults: ScannerResult[] = [];
-
-  for (const res of results) {
-    const dedupedIssues: any[] = [];
-    for (const issue of res.issues) {
-      const file = issue.file ? issue.file.replace(/^\.\//, '') : 'global';
-      const line = issue.line ? `:${issue.line}` : '';
-      const fingerprint = `${issue.id}::${file}${line}`;
-
-      if (!uniqueIssues.has(fingerprint)) {
-        uniqueIssues.add(fingerprint);
-        dedupedIssues.push(issue);
-      }
-    }
-    deduplicatedResults.push({ ...res, issues: dedupedIssues });
-  }
+  // 6. Aggregate and Deduplicate Results (global fingerprint dedup across all scanners)
+  const deduplicatedResults = deduplicateResults(results);
 
   const report: AggregatedReport = {
     timestamp: new Date().toISOString(),
