@@ -84,13 +84,37 @@ Once your `.env` is configured and your GitHub App is registered, you can deploy
 
 ## 5. Using the DAT CLI Locally
 
-You can run DAT manually against your local workspace to generate Readiness Scores and trigger autonomous fixes before you even open a PR.
+You can run DAT manually against your local workspace to generate Readiness Scores, surface
+per-component findings, and produce a machine-readable fix manifest for Claude Code before you
+even open a PR.
 
 ### Build the CLI
 ```bash
 npm install
 npm run build
 ```
+
+### Quick Reference: All CLI Flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--config <path>` | `.dat.config.yaml` | Path to config file |
+| `--module <name>` | `all` | Run only a module: `static`, `security`, `container`, `testing`, `llm` |
+| `--url <url>` | — | Manual DAST target (ZAP/k6). Wins over `--deploy`. |
+| `--deploy` | off | Provision an ephemeral GCP Cloud Run preview, scan it, tear it down. |
+| `--only <scanners>` | — | Comma-separated allow-list: `--only semgrep,trivy` |
+| `--skip <scanners>` | — | Comma-separated deny-list: `--skip zap,k6` |
+| `--dry-run` | off | Print which scanners would run — no scanning. |
+| `--auto-fix` | off | Apply AST auto-fixes to the working tree (verified by test suite, reverted on failure). |
+| `--sarif <path>` | `results/dat-report.sarif` | SARIF output (GitHub Security tab). |
+| `--csv <path>` | `results/dat-report.csv` | CSV findings export. |
+| `--pdf <path>` | `results/dat-report.pdf` | Branded PDF report. |
+| `--fix-manifest <path>` | `results/dat-fix-manifest.json` | Machine-consumable findings for Claude Code / coding agents. |
+| `--component-model <path>` | `results/dat-component-model.json` | Emits the application component graph. |
+| `--push-dojo` | off | Push SARIF to DefectDojo (requires `DEFECTDOJO_URL` + `DEFECTDOJO_API_KEY`). |
+| `--push-dtrack` | off | Push SBOM to Dependency-Track (requires `DEPENDENCY_TRACK_URL` + `DEPENDENCY_TRACK_API_KEY`). |
+
+---
 
 ### Basic Scan
 Runs all enabled scanners detected for your ecosystem (Node, Python, Rust, etc.):
@@ -112,37 +136,204 @@ node dist/index.js scan --skip zap,k6
 node dist/index.js scan --module security
 ```
 
-### Ephemeral GCP Deployment for DAST (`--deploy`)
-DAST scanners (OWASP ZAP, k6) need a live URL. Instead of supplying one with `--url`, you can
-have DAT provision a short-lived **GCP Cloud Run** preview of your workspace, scan it, and tear
-it down automatically:
+### Dry-Run: Preview Without Scanning
+See exactly which scanners would run for the current workspace and config, without executing:
+```bash
+node dist/index.js scan --dry-run
+```
+
+---
+
+## 6. Ephemeral GCP Deployment for DAST (`--deploy`)
+
+DAST scanners (OWASP ZAP, k6) need a live URL to test against. Instead of supplying one with
+`--url`, DAT can provision a short-lived **GCP Cloud Run** preview of your workspace, scan it,
+and tear it down automatically — all in a single command.
+
 ```bash
 node dist/index.js scan --deploy --fix-manifest results/dat-fix-manifest.json
 ```
 
-**Prerequisites:**
-* `gcloud` CLI installed and authenticated (`gcloud auth login`).
-* A project set via `deployer.gcp.projectId` in `.dat.config.yaml` (defaults to `dat-tool`) or the
-  `GCP_PROJECT_ID` env var.
-* Docker available (Cloud Build builds the image from `--source .`).
-* Cloud Run API + Artifact Registry enabled on the project.
+### Prerequisites
+* `gcloud` CLI installed and authenticated:
+  ```bash
+  gcloud auth login
+  gcloud config set project dat-tool
+  ```
+* Cloud Run API and Artifact Registry enabled on the project.
+* Docker available locally (Cloud Build uses `--source .` to build the image).
+* Your workspace has a `Dockerfile` or a [buildpack-supported](https://cloud.google.com/run/docs/deploying-source-code) app.
 
-**Cost controls (kept near-zero for test runs):** the preview is deployed with scale-to-zero
-(`--min-instances=0`), a single capped instance (`--max-instances=1`), minimal `1` CPU / `512Mi`
-memory, **no Cloud SQL** by default, and `--no-allow-unauthenticated` (IAM-only access via a
-generated OIDC token). On teardown, DAT deletes **both** the Cloud Run service and its container
-image from Artifact Registry so nothing keeps accruing storage cost. Teardown runs even if the
-scan fails. Tune CPU/memory/instances and project/region under `deployer.gcp` in the config.
+### Configuration (`.dat.config.yaml`)
+The deployer is pre-configured for project `dat-tool`:
+```yaml
+deployer:
+  enabled: false          # set true to deploy on every scan, or use --deploy flag
+  provider: gcp
+  gcp:
+    projectId: "dat-tool"
+    region: us-central1
+    cpu: "1"
+    memory: 512Mi
+    maxInstances: 1
+```
+You can also set `GCP_PROJECT_ID` and `GCP_REGION` as environment variables.
 
-> `--url <target>` always takes precedence: if you pass an explicit URL, provisioning is skipped.
-> You can also set `deployer.enabled: true` in the config to deploy on every scan without the flag.
+### Cost Controls (near-zero for short test runs)
+
+| Control | Value | Effect |
+|---|---|---|
+| `--min-instances=0` | 0 | Scale to zero — billed only during active requests |
+| `--max-instances=1` | 1 | Never spins up more than one instance |
+| CPU / Memory | 1 / 512Mi | Minimal viable compute |
+| Cloud SQL | Off by default | The most costly component is never linked unless you set `cloudSqlInstance` |
+| Authentication | `--no-allow-unauthenticated` | IAM-only access; no public traffic costs |
+| Teardown | Service + image deleted | Artifact Registry storage doesn't accumulate |
+
+> **Teardown is guaranteed.** Even if the scan crashes or the quality gate fails, DAT tears down
+> the ephemeral environment before exiting. Nothing is ever left running.
+
+### Precedence Rules
+* `--url <target>` **always wins** — if you pass an explicit URL, provisioning is skipped entirely.
+* `deployer.enabled: true` in config triggers deploy on every scan without the `--deploy` flag.
 
 ---
 
-## 6. Understanding the Autonomous Rollback Loop
+## 7. Logical / Functional Test Execution
 
-When DAT detects fixable insecure code patterns (via AST) or Dockerfile vulnerabilities:
-1. It applies the fix inline.
-2. It looks for your native test framework (e.g., `npm test`, `pytest`, `cargo test`).
-3. If tests pass, the fix is kept.
-4. If tests fail (or if no test command is found), **DAT will automatically execute `git checkout -- <file>` to revert the changes**, guaranteeing that the pipeline never breaks a functional build.
+DAT runs your application's own test suite as a first-class evaluation step and treats **failing
+tests as gate-blocking HIGH findings**. A missing test suite is also flagged as a coverage gap
+rather than silently passing.
+
+This is separate from the Jest Coverage scanner (which only measures coverage %). The Logic Tests
+scanner asks: *does the application behave correctly according to its own contracts?*
+
+Configure in `.dat.config.yaml`:
+```yaml
+scanners:
+  logicTests:
+    enabled: true
+    failOnMissingTests: true   # HIGH finding if no test suite detected (set false to downgrade to INFO)
+    # command: "npm test"      # auto-detected from ecosystem; override here if needed
+    # targetDir: "."
+```
+
+When a test fails, the finding appears in the console, the SARIF output, and the fix manifest with
+full details so a coding agent can trace the failing assertion back to the source.
+
+---
+
+## 8. Scanner Preflight
+
+Before running any scanner, DAT probes its required tool on PATH. If the tool is absent:
+
+* The scanner is marked **SKIPPED** (distinct from "ran clean").
+* The skip is printed in the report with the missing binary name.
+* A `⚠️ N scanner(s) SKIPPED` warning appears in the summary.
+* Skipped scanners appear as **coverage gaps** in the fix manifest, so an absent tool never
+  silently inflates your readiness score.
+
+Install the relevant tool to move the scanner from SKIPPED to active. Run with `--dry-run` first
+to see which tools would be invoked.
+
+---
+
+## 9. Application Component Model (`dat model`)
+
+DAT can build a typed graph of your application's components — buttons, inputs, forms, API calls,
+backend endpoints, network resources — and link them cross-stack (which UI call hits which endpoint).
+This underpins per-component fail-safe evaluation in Phase 3.
+
+### Generate standalone (no scanners)
+```bash
+node dist/index.js model --out results/dat-component-model.json
+```
+
+### Generate as part of a scan (findings attributed to components)
+```bash
+node dist/index.js scan --component-model results/dat-component-model.json \
+  --fix-manifest results/dat-fix-manifest.json
+```
+
+When both flags are present, each finding in the fix manifest gets a `componentRef` pointing to
+the owning component in the graph — an agent fixing a security finding knows exactly which button,
+input, or endpoint it belongs to.
+
+For the full schema and extractor coverage notes, see [COMPONENT_MODEL.md](COMPONENT_MODEL.md).
+
+---
+
+## 10. Fix Manifest for Claude Code (`--fix-manifest`)
+
+The fix manifest is a machine-consumable JSON contract for coding agents. Unlike the SARIF output
+(which is for the GitHub Security tab), the manifest is designed to be *actioned*:
+
+```bash
+node dist/index.js scan --fix-manifest results/dat-fix-manifest.json
+```
+
+Each finding contains:
+* A **stable `findingId`** (safe to track across runs).
+* **`category`**: `security`, `defect`, `best-practice`, `robustness`, `coherence`, `fail-safe`, `coverage`.
+* **`gateBlocking: true/false`** — whether fixing this is required to pass the quality gate.
+* **`location`**: file, line, and a ±3 line code **excerpt** for immediate context.
+* **`componentRef`**: the owning component id (when `--component-model` is also passed).
+* **`suggestedFix`**: a concrete hint where available.
+* **`verification.command`**: the exact command to run after applying a fix to confirm it works.
+
+Findings are sorted gate-blocking-first so an agent fixes what unblocks deploy first.
+
+See [CLAUDE_FIX_PROTOCOL.md](CLAUDE_FIX_PROTOCOL.md) for the full agent workflow.
+
+---
+
+## 11. Autonomous AST Auto-Fix (`--auto-fix`)
+
+DAT ships a deterministic AST rewrite engine (`ast-grep`) that applies safe, mechanical fixes for
+a narrow set of known-bad patterns (e.g., stripping `eval()` usage). It is **off by default**
+because it mutates your working tree.
+
+```bash
+node dist/index.js scan --auto-fix
+```
+
+**How it works:**
+1. Discovers matching files without touching them.
+2. Takes an **in-memory snapshot** of the originals (no git dependency).
+3. Applies the AST rewrite.
+4. Runs your test suite (`npm test`, `pytest`, etc. — auto-detected from ecosystem).
+5. **If tests pass:** fix is committed to disk.
+6. **If tests fail (or no test suite found):** originals are restored from snapshot — the pipeline never breaks a working build.
+7. Only whitelisted test commands are allowed as the verify step (blocks RCE via malicious config).
+
+> For fixes that require logical reasoning (component robustness, auth gaps, missing error
+> handling), use the fix manifest + Claude Code rather than `--auto-fix`.
+
+---
+
+## 12. Understanding the Readiness Score
+
+The Deployment Readiness Score (0–100) is a **health indicator**, not the gate. The quality gate
+blocks deployment based on the `failOn` severity list regardless of the score.
+
+```
+Score = 100 − (severity_weight × log₂(1 + count)) per severity
+```
+
+| Severity | Weight |
+|---|---|
+| CRITICAL | 60 |
+| HIGH | 25 |
+| MEDIUM | 8 |
+| LOW | 2 |
+
+Key properties:
+* **Bounded** — always 0–100, never goes negative.
+* **Severity-dominant** — one CRITICAL outweighs many LOWs (log dampening reduces volume impact).
+* **Diminishing returns** — the 10th finding of the same severity penalises less than the 1st.
+
+| Score | Meaning |
+|---|---|
+| 80–100 | Healthy — minor issues only |
+| 50–79 | Caution — address before next deploy |
+| 0–49 | Blocked — critical/high findings present |
