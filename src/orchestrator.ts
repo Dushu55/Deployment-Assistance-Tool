@@ -9,7 +9,8 @@ import { pushToDependencyTrack } from './reporters/dependencyTrack.js';
 import { generateFixManifest } from './reporters/fixManifest.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
 import { ComponentGraph } from './components/types.js';
-import { AggregatedReport, ScannerResult, DatConfig, Scanner, SupportedLanguage } from './types.js';
+import { AggregatedReport, ScannerResult, DatConfig, Scanner, SupportedLanguage, ProfileName } from './types.js';
+import { PROFILES } from './profiles.js';
 import { ALL_SCANNERS } from './scanners/index.js';
 import { calculateReadinessScore, deduplicateResults } from './utils.js';
 import { activeProcesses } from './runner.js';
@@ -68,15 +69,35 @@ export const CONFIG_KEYS: Record<string, string> = {
 
 /**
  * Single source of truth for "which scanners are active" — used by the orchestrator, the
- * readiness preflight, and profile selection. A scanner is active when it is enabled (by config)
- * AND supports a detected language (or is language-agnostic).
+ * readiness preflight, and profile selection. A scanner is active when it is selected
+ * (by profile, or by per-scanner config.enabled when no profile is set) AND supports a detected
+ * language (or is language-agnostic).
+ *
+ * Selection precedence: an explicit `opts.profile` wins over `config.profile`; when a profile is
+ * active it defines the enabled set (per-scanner enabled flags are ignored); `full` enables every
+ * scanner. With no profile, the per-scanner `enabled` flags apply (backward compatible).
  */
-export function getEnabledScanners(config: DatConfig, detectedLanguages: SupportedLanguage[]): Scanner[] {
+export function getEnabledScanners(
+  config: DatConfig,
+  detectedLanguages: SupportedLanguage[],
+  opts: { profile?: ProfileName } = {}
+): Scanner[] {
+  const profile = opts.profile ?? config.profile;
+  const enableAll = profile === 'full';
+  const profileKeys = profile && profile !== 'full' ? new Set(PROFILES[profile]) : null;
+
   return ALL_SCANNERS.filter(scanner => {
     const key = CONFIG_KEYS[scanner.name];
     if (!key) return false;
-    const scannerConfig = (config.scanners as any)[key];
-    if (scannerConfig?.enabled !== true) return false;
+
+    if (enableAll) {
+      // every scanner is in scope
+    } else if (profileKeys) {
+      if (!profileKeys.has(key)) return false;
+    } else {
+      const scannerConfig = (config.scanners as any)[key];
+      if (scannerConfig?.enabled !== true) return false;
+    }
 
     if (scanner.supportedLanguages === 'all') return true;
     return scanner.supportedLanguages.some(lang => detectedLanguages.includes(lang));
@@ -86,6 +107,7 @@ export function getEnabledScanners(config: DatConfig, detectedLanguages: Support
 export interface DatRunOptions {
   config?: string;
   module?: string;
+  profile?: ProfileName; // one-word scanner selection (quick|standard|security|full)
   url?: string;
   authToken?: string;
   sarif?: string;
@@ -182,8 +204,12 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   // 1. Load config
   const config = loadConfig(configPath);
   
-  // 2. Identify enabled scanners from config and support for current languages
-  let scannersToRun = getEnabledScanners(config, detectedLanguages);
+  // 2. Identify enabled scanners from config/profile and support for current languages
+  const activeProfile = options.profile ?? config.profile;
+  if (activeProfile) {
+    console.log(chalk.gray(`Using profile: ${activeProfile}`));
+  }
+  let scannersToRun = getEnabledScanners(config, detectedLanguages, { profile: activeProfile });
 
   // 3. Apply CLI/Options filter overrides
   if (options.module && options.module !== 'all') {

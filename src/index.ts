@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import { runDatPipeline } from './orchestrator.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
 import { EnvironmentDetector } from './env.js';
+import { isProfileName, PROFILE_NAMES } from './profiles.js';
 
 const program = new Command();
 
@@ -17,6 +18,7 @@ program
   .command('scan')
   .description('Run configured scanners on the current repository')
   .option('-m, --module <module>', 'Specify a module to run (e.g., static, security, container, testing, llm)', 'all')
+  .option('-p, --profile <name>', 'Scanner preset: quick | standard | security | full (overrides per-scanner enabled flags)')
   .option('-c, --config <path>', 'Path to config file', '.dat.config.yaml')
   .option('-u, --url <url>', 'Target URL for DAST scanning (e.g. OWASP ZAP)')
   .option('--deploy', 'Provision an ephemeral GCP Cloud Run environment (scale-to-zero, minimal cost), scan it, then tear it down. Requires gcloud CLI + GCP_PROJECT_ID (or deployer.gcp.projectId in config). Ignored if --url is set.')
@@ -33,6 +35,10 @@ program
   .option('--auto-fix', 'Apply autonomous AST auto-fixes to the working tree (mutates files; verified by your test suite and reverted on failure)')
   .action(async (options) => {
     try {
+      if (options.profile && !isProfileName(options.profile)) {
+        console.log(chalk.red.bold(`\n❌ Unknown profile "${options.profile}". Valid: ${PROFILE_NAMES.join(', ')}.`));
+        process.exit(1);
+      }
       const { report, failedGate } = await runDatPipeline({ ...options });
       
       // If report is null, it was a dry run or no scanners configured.
