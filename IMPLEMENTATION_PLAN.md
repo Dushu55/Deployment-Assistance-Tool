@@ -2,7 +2,13 @@
 
 This is the living artifact tracking the end-to-end development, testing, and deployment of the Deployment Assist Tool.
 
-**Current Status:** `All Phases 1-8 Completed & Verified` | `Production Ready`
+**Current Status:** `Advanced POC — orchestration core complete` | `Enterprise hardening in progress (see Phase 16)`
+
+> **Accuracy note (2026-05-30):** Earlier revisions of this plan and the V2.1 release notes
+> ran ahead of the implementation (e.g. the Gitleaks scanner shipped registered-but-unwired,
+> and the DAST layer could silently bypass the gate). Those gaps are tracked honestly in
+> [docs/FINDINGS.md](docs/FINDINGS.md) and addressed in Phase 16 below. Status claims are now
+> backed by tests in CI.
 
 ---
 
@@ -157,3 +163,19 @@ This is the living artifact tracking the end-to-end development, testing, and de
   - Added a `docker image inspect` pre-check to `dockle.ts` to skip missing images gracefully instead of throwing hard pipeline crashes.
   - Developed `pushToDependencyTrack` REST API client (`src/reporters/dependencyTrack.ts`) and integrated `--push-dtrack` into the CLI to continuously monitor generated CycloneDX SBOMs.
   - Hardened the `AstGrepAutoFixer` to proactively revert code and return an error if `verifyCommand` is null, rather than committing unverified code rewrites.
+
+---
+
+## Phase 16: POC→Enterprise Hardening Sprint (IN PROGRESS)
+**Objective:** Reconcile the codebase with its claims and lay the foundation for the enterprise tool. Each item below is backed by tests in CI (test count 40 → 80). See [docs/ENTERPRISE_ROADMAP.md](docs/ENTERPRISE_ROADMAP.md).
+
+- **Foundation:** Repository placed under version control; POC scrap files removed; `npm test` glob fixed (it was silently running only 27 of 40 test files under `sh`).
+- **Defect A — Gitleaks wiring:** `Gitleaks (Secrets)` was registered but absent from `CONFIG_KEYS`, so the orchestrator filtered it out and it never ran. Wired it in and added a **registry guard test** asserting every `ALL_SCANNERS` entry maps to a `CONFIG_KEYS` entry, making this class of bug impossible.
+- **Defect B — Auto-fix safety:** The AST auto-fixer ran on *every* scan, mutating the working tree. It is now OFF by default and gated behind `--auto-fix` / `autoFix.enabled` (`DEFAULT_CONFIG` flipped to disabled).
+- **Defect C — Git-independent rollback:** Rewrote `applyFix` to discover matches, snapshot originals in memory, and revert from snapshot instead of `git checkout --` (which silently failed in non-git checkouts, leaving broken fixes in place).
+- **Defect D — DAST silent bypass closed:** ZAP/k6 now emit a gate-relevant `*-COVERAGE-GAP` finding (HIGH by default, configurable) when no target URL is available, instead of a silent INFO pass.
+- **Defect E — Scanner preflight:** Added `Scanner.requiredBinaries` + a cached PATH probe. Missing tools yield an explicit **SKIPPED** state (distinct from "ran clean"), rendered in the report so absent scanners never inflate the score.
+- **Defect I — Readiness score normalization:** Replaced the unbounded linear subtraction with a bounded, severity-weighted, log-dampened formula so finding *volume* no longer dominates *severity*.
+- **Defect G — Real tests:** Extracted pure parsers (`parseSemgrepResults`, `parseZapResults`) and the dedup logic (`deduplicateResults`/`issueFingerprint`) and tested them, replacing presence-only assertions.
+- **NEW — Logical/functional test provision:** Added a first-class `Logic Tests` scanner that runs the application's test suite and treats **failing tests as gate-blocking HIGH findings** (per-test detail via Jest `--json`), and flags a **missing** suite as a coverage gap instead of silently passing.
+- **NEW — Claude-Code fix manifest (Roadmap Phase 1):** Added the versioned, lossless `fix-manifest.json` exporter + `--fix-manifest` flag and [docs/CLAUDE_FIX_PROTOCOL.md](docs/CLAUDE_FIX_PROTOCOL.md) — the machine contract that lets a coding agent ingest findings, fix them, and self-verify.

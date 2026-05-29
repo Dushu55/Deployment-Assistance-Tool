@@ -2,6 +2,13 @@
 
 This document provides a highly rigorous, comprehensive critique and gap analysis of the Deployment Assist Tool (DAT) codebase. It identifies architectural flaws, security risks, type safety gaps, and operational limitations in evaluating and finding corrective measures for web applications before deployment.
 
+> **Reconciliation note (2026-05-30):** Several items previously marked `[RESOLVED]` were resolved in
+> *docs only* — the code did not honor them (e.g. Gitleaks was registered but unwired so it never ran;
+> the DAST layer still silently bypassed the gate). The POC→Enterprise hardening sprint (Phase 16 in
+> [../IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md)) actually fixed these in code **with tests**.
+> The matrix below now distinguishes *verified-with-tests* from *implemented-but-unverified* and
+> *still-open*. Status claims here are backed by CI.
+
 ---
 
 ## 1. Architectural & Security Strengths
@@ -115,13 +122,13 @@ DAT implements several highly robust design patterns:
 
 | # | Gap | Category | Severity | Action Required |
 |---|---|---|---|---|
-| 1 | DAST skips silently without target URL | Architecture | **CRITICAL** | Enforce a strict fallback or DAST check run warning when no URL is available. |
+| 1 | DAST skips silently without target URL | Architecture | **CRITICAL** | [RESOLVED+TESTED] ZAP/k6 now emit a gate-relevant `*-COVERAGE-GAP` (HIGH, configurable) instead of a silent INFO pass. (Defect D) |
 | 2 | Regex-based reachability engine | Security Logic | **HIGH** | Replace simple regex checks with AST/Call-Graph trace parsing or use official scanner reachability. |
 | 3 | Missing `autoFix` key in schema | Type Safety | **HIGH** | [RESOLVED] Added autoFix to DatConfig interface. |
 | 4 | Insecure `exec` in auto-fixer | Security | **HIGH** | [RESOLVED] Migrated to execFileAsync in AstGrepAutoFixer. |
 | 5 | Webhook PRs lack trust validation | Security | **HIGH** | [RESOLVED] Added author_association checks in app.ts. |
 | 6 | SonarQube returns empty issues | Correctness | **HIGH** | [RESOLVED] Added async polling to SonarQube API. |
-| 7 | Zero secrets scanning | Coverage | **HIGH** | [RESOLVED] Added Gitleaks scanner to detect hardcoded secrets. |
+| 7 | Zero secrets scanning | Coverage | **HIGH** | [RESOLVED+TESTED] Gitleaks scanner added AND actually wired into `CONFIG_KEYS` (it was previously filtered out and never ran); registry guard test prevents recurrence. (Defect A) |
 | 8 | Garak bypasses SSRF validation | Security | **HIGH** | [RESOLVED] isSafeUrl() now implemented in garak.ts. |
 | 9 | k6 only tests HTTP 200 | Coverage | **MEDIUM** | Extend the dynamic k6 template to support custom path validation and API models. |
 | 10 | Dockle scans non-existent image | Correctness | **MEDIUM** | [RESOLVED] Added docker image inspect pre-check. |
@@ -138,10 +145,10 @@ DAT implements several highly robust design patterns:
 
 ## 4. Code Quality & Maintenance Critiques
 
-1. **Superficial Unit Tests**: Almost all tests in `src/scanners/*.test.ts` only check property existence (e.g. `assert.strictEqual(hadolintScanner.name, 'Hadolint')`). The codebase has no unit tests checking JSON output parsing, reachability filters, or API response schemas.
+1. **Superficial Unit Tests**: *(Partially addressed — Phase 16.)* Previously almost all tests only checked property existence. Pure parsers (`parseSemgrepResults`, `parseZapResults`), the dedup layer, severity mapping, the readiness score, preflight probing, and the logic-test scanner now have real logic tests (40 → 80 tests). Reachability-filter and API-response-schema tests remain TODO.
 2. **Configuration Fragmentation**: Registering a new scanner is too complex. It requires parallel changes to `.dat.config.yaml`, `src/types.ts`, `src/scanners/index.ts`, and the scanner implementation itself. Bypassing the schema via `as any` casts highlights this friction.
-3. **Imprecise Scoring Metrics**: The Deployment Readiness Score uses a crude, arbitrary subtraction formula (e.g., `-20` for Critical, `-10` for High). It does not normalize by repository size or complexity, skewing metrics for large monorepos.
-4. **Dead Code & Scrap Files**: The project root contains several abandoned utility and test scripts (`temp_test.ts`, `test-autofix.ts`, `test-k6.js`, `add_comments.py`, etc.) that clutter the workspace.
+3. **Imprecise Scoring Metrics**: *(Addressed — Phase 16, Defect I.)* The linear subtraction was replaced with a bounded, severity-weighted, log-dampened formula so volume no longer dominates severity. Density normalization by repository size/LOC remains a roadmap item.
+4. **Dead Code & Scrap Files**: *(Resolved — Phase 16.)* The abandoned root scripts (`temp_test.ts`, `test-autofix.ts`, `test-k6.js`, `add_comments.py`, `patch_*.py`) were removed and the repo placed under version control.
 
 ---
 
