@@ -11,6 +11,7 @@ import { buildComponentModel, writeComponentModel } from './components/builder.j
 import { ComponentGraph } from './components/types.js';
 import { AggregatedReport, ScannerResult, DatConfig, Scanner, SupportedLanguage, ProfileName } from './types.js';
 import { PROFILES } from './profiles.js';
+import { isNotApplicable, DEFAULT_REQUIRED } from './inputs.js';
 import { ALL_SCANNERS } from './scanners/index.js';
 import { calculateReadinessScore, deduplicateResults } from './utils.js';
 import { activeProcesses } from './runner.js';
@@ -120,6 +121,7 @@ export interface DatRunOptions {
   only?: string;
   skip?: string;
   dryRun?: boolean;
+  autoDetect?: boolean; // prune scanners whose advisory input is absent (default true; --no-auto-detect)
   deploy?: boolean; // provision + teardown an ephemeral GCP environment around the scan
   autoFix?: boolean; // opt-in: mutate the working tree with AST auto-fixes (default off for `scan`)
   throwOnFailure?: boolean; // programmatic invocation might not want process.exit(1)
@@ -230,6 +232,29 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     scannersToRun = scannersToRun.filter(s => {
       const key = CONFIG_KEYS[s.name];
       return !skipKeys.includes(key.toLowerCase()) && !skipKeys.includes(s.name.toLowerCase());
+    });
+  }
+
+  // 3.5 Auto-detect: prune scanners whose (advisory) expected input is absent — e.g. Checkov with
+  // no IaC, Promptfoo with no config. Required-tier gaps (Dockerfile/tests/DAST) are NOT pruned so
+  // they still surface. Disabled by --no-auto-detect / autoDetect:false, and bypassed under --only.
+  const autoDetect = (options.autoDetect ?? config.autoDetect ?? true) && !options.only;
+  if (autoDetect) {
+    const inputCtx = {
+      workspaceRoot: process.cwd(),
+      url: options.url,
+      deploy: options.deploy,
+      deployerEnabled: config.deployer?.enabled === true,
+      detectedLanguages
+    };
+    const required = config.preflight?.required ?? DEFAULT_REQUIRED;
+    scannersToRun = scannersToRun.filter(s => {
+      if (isNotApplicable(s, inputCtx, required)) {
+        const inputLabels = (s.expectedInputs || []).map(i => i.label).join(', ');
+        console.log(chalk.gray(`↷ Skipping ${s.name} (no ${inputLabels} found — not applicable)`));
+        return false;
+      }
+      return true;
     });
   }
 

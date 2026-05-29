@@ -32,6 +32,7 @@ program
   .option('--only <scanners>', 'Run only specific scanners (comma-separated, e.g., semgrep,trivy)')
   .option('--skip <scanners>', 'Skip specific scanners (comma-separated, e.g., zap,dockle)')
   .option('--dry-run', 'Show which scanners would run without executing them')
+  .option('--no-auto-detect', 'Do not prune scanners whose expected input is absent (run all selected scanners)')
   .option('--auto-fix', 'Apply autonomous AST auto-fixes to the working tree (mutates files; verified by your test suite and reverted on failure)')
   .action(async (options) => {
     try {
