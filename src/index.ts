@@ -19,6 +19,7 @@ program
   .option('-m, --module <module>', 'Specify a module to run (e.g., static, security, container, testing, llm)', 'all')
   .option('-c, --config <path>', 'Path to config file', '.dat.config.yaml')
   .option('-u, --url <url>', 'Target URL for DAST scanning (e.g. OWASP ZAP)')
+  .option('--deploy', 'Provision an ephemeral GCP Cloud Run environment (scale-to-zero, minimal cost), scan it, then tear it down. Requires gcloud CLI + GCP_PROJECT_ID (or deployer.gcp.projectId in config). Ignored if --url is set.')
   .option('--sarif <path>', 'Output results in SARIF format', 'results/dat-report.sarif')
   .option('--csv <path>', 'Output results in CSV format', 'results/dat-report.csv')
   .option('--pdf <path>', 'Output results in professional PDF format', 'results/dat-report.pdf')

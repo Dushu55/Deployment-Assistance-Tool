@@ -17,7 +17,25 @@ import { AstGrepAutoFixer } from './autofix/index.js';
 import { logger } from './logger.js';
 import { EnvironmentDetector } from './env.js';
 import { emitAuditStart, emitAuditEnd, AuditContext } from './audit.js';
-import { missingBinaries } from './utils/preflight.js';
+import { missingBinaries, isBinaryAvailable } from './utils/preflight.js';
+import { GcpCloudRunDeployer } from './deployers/gcp.js';
+import { EphemeralDeployment } from './deployers/index.js';
+import { promisify } from 'util';
+import { execFile } from 'child_process';
+
+const execFileAsync = promisify(execFile);
+
+/** Resolve the current git branch/sha for naming the ephemeral deployment; falls back when git is absent. */
+async function resolveGitRef(): Promise<{ branch: string; sha?: string }> {
+  try {
+    const { stdout: branch } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
+    let sha: string | undefined;
+    try { sha = (await execFileAsync('git', ['rev-parse', 'HEAD'])).stdout.trim(); } catch { /* no sha */ }
+    return { branch: branch.trim() || 'local', sha };
+  } catch {
+    return { branch: 'local' };
+  }
+}
 
 export const CONFIG_KEYS: Record<string, string> = {
   'Semgrep': 'semgrep',
@@ -63,6 +81,7 @@ export interface DatRunOptions {
   only?: string;
   skip?: string;
   dryRun?: boolean;
+  deploy?: boolean; // provision + teardown an ephemeral GCP environment around the scan
   autoFix?: boolean; // opt-in: mutate the working tree with AST auto-fixes (default off for `scan`)
   throwOnFailure?: boolean; // programmatic invocation might not want process.exit(1)
   auditContext?: AuditContext;
@@ -197,7 +216,35 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   const activeScannersNames = scannersToRun.map(s => s.name);
   console.log(chalk.gray(`Loaded configuration. Active scanners: ${activeScannersNames.join(', ')}\n`));
 
+  // 4.4 Ephemeral deployment (optional, --deploy): provision a live preview to scan against.
+  // Teardown is guaranteed in the `finally` below so we never leak a paid environment.
+  // A manually-supplied --url always wins and short-circuits provisioning.
+  let ephemeralDeployment: EphemeralDeployment | undefined;
+  let deployer: GcpCloudRunDeployer | undefined;
+  const deployRequested = options.deploy || config.deployer?.enabled === true;
+  if (deployRequested && !options.url) {
+    if (!(await isBinaryAvailable('gcloud'))) {
+      throw new Error('--deploy requires the gcloud CLI to be installed and authenticated (run `gcloud auth login`).');
+    }
+    deployer = new GcpCloudRunDeployer(config.deployer?.gcp);
+    const { branch, sha } = await resolveGitRef();
+    try {
+      console.log(chalk.cyan(`\n☁️  Provisioning ephemeral GCP Cloud Run environment (branch: ${branch})...`));
+      ephemeralDeployment = await deployer.deployBranch(branch, sha);
+      options.url = ephemeralDeployment.url;
+      options.authToken = ephemeralDeployment.authToken;
+      console.log(chalk.green(`☁️  Ephemeral deployment ready: ${options.url}`));
+    } catch (err: any) {
+      console.log(chalk.yellow(`⚠️  Ephemeral deployment failed: ${err.message}. Continuing without a DAST target.`));
+      ephemeralDeployment = undefined;
+    }
+  } else if (deployRequested && options.url) {
+    console.log(chalk.gray('ℹ️  Ephemeral deploy skipped because --url was provided (manual target wins).'));
+  }
+
   const totalStartTime = Date.now();
+
+  try {
 
   // 4.5 Preflight: probe each scanner's required external tools. Missing tools yield an
   // explicit SKIPPED result (distinct from "ran clean") so absent scanners never silently
@@ -381,4 +428,16 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   }
 
   return { report, failedGate };
+  } finally {
+    // Guarantee teardown of the ephemeral environment on every exit path (success, gate
+    // failure, or unexpected error) so a paid Cloud Run service is never left running.
+    if (ephemeralDeployment && deployer) {
+      try {
+        await deployer.teardown(ephemeralDeployment.id);
+        console.log(chalk.gray('☁️  Ephemeral environment torn down.'));
+      } catch (e: any) {
+        logger.error(`Teardown failed for ${ephemeralDeployment.id}: ${e.message}`);
+      }
+    }
+  }
 }

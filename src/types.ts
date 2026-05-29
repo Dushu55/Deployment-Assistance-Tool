@@ -65,6 +65,19 @@ export interface DatConfig {
     gitleaks?: { enabled: boolean; targetDir?: string };
   };
   failOn: Severity[]; // e.g., ['CRITICAL', 'HIGH']
+  deployer?: {
+    enabled?: boolean;
+    provider?: 'gcp' | 'vercel';
+    gcp?: {
+      projectId?: string;        // overrides GCP_PROJECT_ID env var
+      region?: string;           // overrides GCP_REGION (default: us-central1)
+      cloudSqlInstance?: string; // overrides GCP_CLOUD_SQL_INSTANCE (off by default — Cloud SQL is costly)
+      // Cost controls (defaults chosen for near-zero cost on short-lived scan runs):
+      cpu?: string;              // default '1'
+      memory?: string;           // default '512Mi'
+      maxInstances?: number;     // default 1
+    };
+  };
 }
 
 export interface ScannerContext {

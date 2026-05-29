@@ -1,0 +1,2 @@
+Scanner,ID,Severity,Message,File,Line,Remediation
+Logic Tests,LOGIC-TESTS-PASSED,INFO,All 1 logical test(s) passed.,,,

@@ -112,6 +112,31 @@ node dist/index.js scan --skip zap,k6
 node dist/index.js scan --module security
 ```
 
+### Ephemeral GCP Deployment for DAST (`--deploy`)
+DAST scanners (OWASP ZAP, k6) need a live URL. Instead of supplying one with `--url`, you can
+have DAT provision a short-lived **GCP Cloud Run** preview of your workspace, scan it, and tear
+it down automatically:
+```bash
+node dist/index.js scan --deploy --fix-manifest results/dat-fix-manifest.json
+```
+
+**Prerequisites:**
+* `gcloud` CLI installed and authenticated (`gcloud auth login`).
+* A project set via `deployer.gcp.projectId` in `.dat.config.yaml` (defaults to `dat-tool`) or the
+  `GCP_PROJECT_ID` env var.
+* Docker available (Cloud Build builds the image from `--source .`).
+* Cloud Run API + Artifact Registry enabled on the project.
+
+**Cost controls (kept near-zero for test runs):** the preview is deployed with scale-to-zero
+(`--min-instances=0`), a single capped instance (`--max-instances=1`), minimal `1` CPU / `512Mi`
+memory, **no Cloud SQL** by default, and `--no-allow-unauthenticated` (IAM-only access via a
+generated OIDC token). On teardown, DAT deletes **both** the Cloud Run service and its container
+image from Artifact Registry so nothing keeps accruing storage cost. Teardown runs even if the
+scan fails. Tune CPU/memory/instances and project/region under `deployer.gcp` in the config.
+
+> `--url <target>` always takes precedence: if you pass an explicit URL, provisioning is skipped.
+> You can also set `deployer.enabled: true` in the config to deploy on every scan without the flag.
+
 ---
 
 ## 6. Understanding the Autonomous Rollback Loop

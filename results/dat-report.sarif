@@ -1,0 +1,49 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Deployment Assist Tool (DAT)",
+          "informationUri": "https://github.com/quantiphi/dat",
+          "rules": [
+            {
+              "id": "Logic_Tests-LOGIC-TESTS-PASSED",
+              "shortDescription": {
+                "text": "All 1 logical test(s) passed."
+              },
+              "fullDescription": {
+                "text": "All 1 logical test(s) passed."
+              },
+              "help": {
+                "text": "No remediation provided."
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "Logic_Tests-LOGIC-TESTS-PASSED",
+          "level": "note",
+          "message": {
+            "text": "[INFO] All 1 logical test(s) passed."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "unknown-file"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
