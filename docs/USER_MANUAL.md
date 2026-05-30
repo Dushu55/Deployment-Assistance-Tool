@@ -102,6 +102,7 @@ npm run build
 | `--profile <name>` | — | Scanner preset: `quick` \| `standard` \| `security` \| `full` (overrides per-scanner flags) |
 | `--module <name>` | `all` | Run only a module: `static`, `security`, `container`, `testing`, `llm` |
 | `--no-auto-detect` | (auto-detect on) | Don't prune scanners whose expected input is absent |
+| `--skip-component-eval` | (eval on) | Disable per-component fail-safe/robustness/coherence checks |
 | `--skip-preflight` | (preflight on) | Skip the application-readiness check at scan start |
 | `--strict-preflight` | off | Abort the scan if a required input is missing |
 | `--url <url>` | — | Manual DAST target (ZAP/k6). Wins over `--deploy`. |
@@ -317,6 +318,26 @@ the owning component in the graph — an agent fixing a security finding knows e
 input, or endpoint it belongs to.
 
 For the full schema and extractor coverage notes, see [COMPONENT_MODEL.md](COMPONENT_MODEL.md).
+
+### Component Evaluators (Phase 3)
+DAT doesn't just *model* your components — it **evaluates** each one for fail-safe attributes,
+attack-resistance, robustness, and coherence, and feeds the findings into the gate and fix-manifest.
+This runs automatically during `dat scan` (disable with `--skip-component-eval` or
+`componentEval: { enabled: false }`).
+
+| Finding | Tier | Blocks gate? |
+|---|---|---|
+| State-changing endpoint with no auth middleware | security (HIGH) | ✅ |
+| Security group exposing a sensitive port (22/3306/…) to `0.0.0.0/0` | security (CRITICAL) | ✅ |
+| Endpoint accepting `ANY` HTTP method (CSRF surface) | security (HIGH) | ✅ |
+| Mutating API call with no error handling / no timeout | robustness (MEDIUM) | — |
+| UI call sends no auth header to an endpoint that requires it | coherence (MEDIUM) | — |
+| Input with no validation; password with no maxLength | robustness (LOW) | — |
+| Form/submit button with no handler | fail-safe (LOW) | — |
+
+Security gaps block under the default `failOn: [CRITICAL, HIGH]`; robustness/coherence/fail-safe
+findings advise (heuristic extraction, so they don't fail the build). Each finding carries its
+`file:line`, a concrete remediation, the precise `category`, and a `componentRef` in the manifest.
 
 ---
 

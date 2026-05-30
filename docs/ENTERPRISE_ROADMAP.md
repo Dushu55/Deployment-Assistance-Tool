@@ -159,18 +159,22 @@ The conceptual heart of the product. Build a typed inventory of the application'
 
 ### Phase 3 — Component Evaluators  *(≈4–6 ew · Risk: Medium)*
 
+> **Status (2026-05-30): deterministic tier DONE.** `src/evaluators/component/` runs 11 rules over the
+> Phase 2 graph (endpoint auth, ANY-method, network least-privilege, API-call timeout/error-handling,
+> cross-stack auth mismatch, input validation, form/button handlers). Findings carry precise
+> `category` (security/robustness/coherence/fail-safe) + `componentRef` and flow through
+> dedup/score/**gate**/manifest — security gaps block, the rest advise. Graph build moved before the
+> gate. 19 tests; verified end-to-end. See USER_MANUAL §9.
+
 Per-component checks for fail-safe attributes, robustness, and coherence. Two tiers:
 
-- [ ] **Deterministic rule evaluators** (fast, cheap, high-precision) for mechanical properties:
-  - Input: validation + sanitization + length/type bounds present.
-  - Button/action: disabled-while-pending, error path handled, idempotency/debounce on mutating actions.
-  - ApiCall: timeout, retry/backoff, auth header, error boundary, no secrets in URL.
-  - NetworkResource: least-privilege (no `0.0.0.0/0` on sensitive ports), encryption in transit.
+- [x] **Deterministic rule evaluators** (fast, cheap, high-precision) — shipped (see status above).
 - [ ] **LLM reasoning evaluator** (judgment calls) for robustness & coherence: given a component + its context slice, ask whether failure modes are handled and whether behavior is coherent with sibling components. Use structured output; **always** attach the deterministic evidence so findings are auditable, never LLM-only assertions.
-- [ ] Both tiers emit standard `Issue[]` with `componentRef` set → flow through existing dedup/score/gate/manifest unchanged.
+- [x] Both tiers emit standard `Issue[]` with `componentRef` set → flow through existing dedup/score/gate/manifest unchanged. *(deterministic tier done)*
 - [ ] Add a confidence/abstention path: LLM findings below a confidence threshold are reported as advisory, not gate-blocking, to control false positives.
+- [ ] **Richer structural edges:** build `contains` (form→input) and `submits` (button/form→ApiCall) edges in `buildComponentModel` to unlock form-level coherence rules.
 
-**Exit criteria:** for a sample app, DAT reports per-component fail-safe/robustness/coherence findings with evidence, and they appear in both the human report and the fix manifest.
+**Exit criteria:** for a sample app, DAT reports per-component fail-safe/robustness/coherence findings with evidence, and they appear in both the human report and the fix manifest. *(met for the deterministic tier; LLM tier is the next step.)*
 
 ### Phase 4 — Enterprise Hardening  *(≈3–5 ew · Risk: Medium)*
 

@@ -9,6 +9,7 @@ import { pushToDependencyTrack } from './reporters/dependencyTrack.js';
 import { generateFixManifest } from './reporters/fixManifest.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
 import { ComponentGraph } from './components/types.js';
+import { evaluateComponentGraph } from './evaluators/component/index.js';
 import { AggregatedReport, ScannerResult, DatConfig, Scanner, SupportedLanguage, ProfileName } from './types.js';
 import { PROFILES } from './profiles.js';
 import { isNotApplicable, DEFAULT_CRITICAL, DEFAULT_HIGHLY_ADVISED } from './inputs.js';
@@ -117,6 +118,7 @@ export interface DatRunOptions {
   pdf?: string;
   fixManifest?: string; // machine-consumable findings for coding agents (Claude Code)
   componentModel?: string; // emit the application/component graph (Phase 2)
+  skipComponentEval?: boolean; // disable Phase 3 per-component evaluators
   pushDojo?: boolean;
   pushDtrack?: boolean;
   only?: string;
@@ -384,6 +386,22 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     console.log(chalk.gray(`\n🛠️  Auto-fix disabled (pass --auto-fix or set autoFix.enabled to remediate).`));
   }
 
+  // 5.7 Build the component model and run Phase 3 evaluators BEFORE aggregation, so per-component
+  // findings (unauth endpoints, no-timeout API calls, world-open ports, cross-stack auth mismatch)
+  // flow through dedup → score → gate → fix-manifest just like scanner findings. The graph is built
+  // once here and reused for persistence and the manifest below.
+  let componentGraph: ComponentGraph | undefined;
+  const componentEvalEnabled = config.componentEval?.enabled !== false && !options.skipComponentEval;
+  if (componentEvalEnabled || options.componentModel || options.fixManifest) {
+    componentGraph = buildComponentModel(process.cwd(), { timestamp: new Date().toISOString(), detectedLanguages });
+  }
+  if (componentGraph && componentEvalEnabled) {
+    const evalResult = evaluateComponentGraph(componentGraph);
+    const affected = new Set(evalResult.issues.map(i => `${i.file}:${i.line}`)).size;
+    console.log(chalk.cyan(`\n🧩 Component Evaluator: ${evalResult.issues.length} finding(s) across ${affected} component(s).`));
+    results.push(evalResult);
+  }
+
   // 6. Aggregate and Deduplicate Results (global fingerprint dedup across all scanners)
   const deduplicatedResults = deduplicateResults(results);
 
@@ -479,11 +497,9 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       console.log(chalk.green.bold('\n✅ Quality Gate Passed.\n'));
   }
 
-  // 11.4 Build the application/component model (Phase 2) when requested, so the fix manifest
-  // can attribute findings to the component they belong to.
-  let componentGraph: ComponentGraph | undefined;
-  if (options.componentModel) {
-    componentGraph = buildComponentModel(process.cwd(), { timestamp: report.timestamp, detectedLanguages });
+  // 11.4 Persist the application/component model (built in step 5.7) when requested. The fix
+  // manifest below uses it to attribute findings to the component they belong to (componentRef).
+  if (options.componentModel && componentGraph) {
     writeComponentModel(componentGraph, options.componentModel);
     console.log(chalk.gray(`🧩 Component model saved to ${options.componentModel} (${componentGraph.nodes.length} components, ${componentGraph.edges.length} links)`));
   }

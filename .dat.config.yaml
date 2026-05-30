@@ -13,6 +13,13 @@
 # Default: [dockerfile, testSuite, dastTarget, datConfig]
 # preflight:
 #   required: [dockerfile, testSuite, dastTarget, datConfig]
+#
+# componentEval (default enabled): per-component evaluators run over the component graph
+# (buttons, inputs, API calls, endpoints, network) and emit fail-safe/robustness/coherence/
+# security findings into the gate + fix-manifest. Security findings block; the rest advise.
+# Disable with `componentEval: { enabled: false }` or the --skip-component-eval flag.
+# componentEval:
+#   enabled: true
 # -------------------------------------------------------------------------------------
 
 scanners:

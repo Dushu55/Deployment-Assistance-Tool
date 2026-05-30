@@ -2,6 +2,11 @@ export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
 
 export type ProfileName = 'quick' | 'standard' | 'full' | 'security';
 
+// Finding category used by the Claude fix-manifest. Defined here (not in fixManifest.ts) so an
+// Issue can declare its own category without a circular import.
+export type FixCategory =
+  | 'security' | 'defect' | 'best-practice' | 'robustness' | 'coherence' | 'fail-safe' | 'coverage';
+
 export interface Issue {
   id: string;          // e.g., 'rule-id' or 'CVE-2024-1234'
   severity: Severity;
@@ -10,6 +15,7 @@ export interface Issue {
   line?: number;
   remediation?: string;
   source: string;      // e.g., 'Semgrep', 'Trivy'
+  category?: FixCategory; // optional explicit category (component evaluators set this precisely)
 }
 
 export interface ScannerResult {
@@ -70,6 +76,7 @@ export interface DatConfig {
   profile?: ProfileName;                  // one-word scanner selection; overrides per-scanner enabled flags
   autoDetect?: boolean;                   // prune scanners whose advisory inputs are absent (default true)
   preflight?: { required?: InputCategory[]; highlyAdvised?: InputCategory[] }; // override tier membership (required == critical)
+  componentEval?: { enabled?: boolean }; // per-component evaluators over the component graph (default enabled)
   deployer?: {
     enabled?: boolean;
     provider?: 'gcp' | 'vercel';

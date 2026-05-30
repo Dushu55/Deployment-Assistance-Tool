@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { AggregatedReport, Severity, Issue } from '../types.js';
+import { AggregatedReport, Severity, Issue, FixCategory } from '../types.js';
 import { ALL_SCANNERS } from '../scanners/index.js';
 import { issueFingerprint } from '../utils.js';
 import { ComponentGraph } from '../components/types.js';
@@ -16,8 +16,7 @@ import { locateComponent } from '../components/builder.js';
 
 export const FIX_MANIFEST_SCHEMA_VERSION = '1.0';
 
-export type FixCategory =
-  | 'security' | 'defect' | 'best-practice' | 'robustness' | 'coherence' | 'fail-safe' | 'coverage';
+export type { FixCategory } from '../types.js'; // re-export for back-compat (now defined in types.ts)
 
 export interface FixFinding {
   findingId: string;
@@ -107,7 +106,7 @@ export function buildFixManifest(
       if (issue.severity === 'INFO') continue; // INFO is informational; not actionable for an agent
       findings.push({
         findingId: `${res.scannerName}:${issueFingerprint(issue)}`,
-        category: categorize(res.scannerName, issue),
+        category: issue.category ?? categorize(res.scannerName, issue),
         severity: issue.severity,
         gateBlocking: failOn.includes(issue.severity),
         source: issue.source || res.scannerName,
