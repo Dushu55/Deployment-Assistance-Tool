@@ -3,6 +3,7 @@ import { logger } from "./logger.js";
 import { runDatPipeline } from "./orchestrator.js";
 import { GcpCloudRunDeployer } from "./deployers/gcp.js";
 import { EphemeralDeployment } from "./deployers/index.js";
+import { authorizeWebhook } from "./agent/authz.js";
 
 export default (app: Probot) => {
   app.log.info("Deployment Assist Tool (DAT) GitHub App loaded!");
@@ -18,13 +19,15 @@ export default (app: Probot) => {
     logger.info(`Webhook Received: PR event for ${repoFullName}#${prNumber}`);
     context.log.info(`Target branch: ${branch} (commit: ${sha})`);
 
-    // SECURITY PATCH: Verify if PR author is an authorized contributor (Denial of Wallet / Abuse protection)
-    const authorAssociation = pull_request.author_association;
-    const trustedAssociations = ["OWNER", "MEMBER", "COLLABORATOR"];
-    
-    if (!trustedAssociations.includes(authorAssociation)) {
-      logger.warn(`Untrusted PR author (${pull_request.user?.login}, association: ${authorAssociation}). Skipping DAT pipeline execution to prevent Abuse/DoS.`);
-      
+    // Authorize the webhook: trusted contributor + optional org/repo allow-lists + per-repo rate
+    // limit (Denial-of-Wallet / abuse protection). See src/agent/authz.ts.
+    const authz = authorizeWebhook({
+      authorAssociation: pull_request.author_association,
+      org: repository.owner.login,
+      repo: repoFullName
+    });
+    if (!authz.allowed) {
+      logger.warn(`Skipping DAT pipeline for ${repoFullName}#${prNumber} (${pull_request.user?.login}): ${authz.reason}`);
       try {
         await context.octokit.rest.checks.create({
           owner: repository.owner.login,
@@ -33,10 +36,7 @@ export default (app: Probot) => {
           head_sha: sha,
           status: "completed",
           conclusion: "skipped",
-          output: {
-            title: "Execution Skipped",
-            summary: `DAT pipeline is restricted to trusted contributors (OWNER, MEMBER, COLLABORATOR). The author's association is ${authorAssociation}.`
-          }
+          output: { title: "Execution Skipped", summary: authz.reason }
         });
       } catch (e: any) {
          logger.error(`Failed to create skipped check run: ${e.message}`);
