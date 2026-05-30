@@ -71,7 +71,7 @@ export const dockleScanner: Scanner = {
   module: 'container',
   supportedLanguages: 'all',
   requiredBinaries: ['docker'],
-  expectedInputs: [{ label: 'Built container image', category: 'image', kind: 'image' }],
+  expectedInputs: [{ label: 'Built container image', category: 'image', kind: 'image', consequence: 'Container CIS benchmark compliance is not verified.' }],
   async run(ctx) {
     const image = ctx.config.scanners.dockle?.imageName || 'project-image:latest';
     return runDockle(image);

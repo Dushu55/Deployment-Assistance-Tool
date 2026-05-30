@@ -47,7 +47,7 @@ export const keployScanner: Scanner = {
   module: 'testing',
   supportedLanguages: 'all',
   requiredBinaries: ['keploy'],
-  expectedInputs: [{ label: 'keploy test directory', category: 'apiTests', anyOf: ['keploy'] }],
+  expectedInputs: [{ label: 'keploy test directory', category: 'apiTests', anyOf: ['keploy'], consequence: 'API regression behaviour is unverified across releases.' }],
   async run(ctx) {
     const appCmd = ctx.config.scanners.keploy?.appCmd || 'npm start';
     return runKeploy(appCmd);

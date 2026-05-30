@@ -69,7 +69,7 @@ export interface DatConfig {
   failOn: Severity[]; // e.g., ['CRITICAL', 'HIGH']
   profile?: ProfileName;                  // one-word scanner selection; overrides per-scanner enabled flags
   autoDetect?: boolean;                   // prune scanners whose advisory inputs are absent (default true)
-  preflight?: { required?: InputCategory[] }; // override which input categories are "required" tier
+  preflight?: { required?: InputCategory[]; highlyAdvised?: InputCategory[] }; // override tier membership (required == critical)
   deployer?: {
     enabled?: boolean;
     provider?: 'gcp' | 'vercel';
@@ -95,11 +95,15 @@ export interface ScannerContext {
 export type SupportedLanguage = 'node' | 'python' | 'go' | 'java' | 'csharp' | 'rust';
 
 // Categories of target-application input a scanner needs to do meaningful work.
-// The first four are the "required" tier by default (block under preflight --strict);
-// the rest are advisory (warn only, and drive auto-detect pruning).
 export type InputCategory =
   | 'dockerfile' | 'testSuite' | 'dastTarget' | 'datConfig'
   | 'iac' | 'deps' | 'lockfile' | 'promptfoo' | 'apiTests' | 'image';
+
+// Urgency tiers mapping the POC→enterprise journey:
+//  - critical:       fix before production (active vuln / unverified logic / supply chain)
+//  - highly-advised: enterprise-grade gaps attackers exploit (infra, container, ecosystem CVEs)
+//  - best-practice:  maturity gaps for a polished production product
+export type InputTier = 'critical' | 'highly-advised' | 'best-practice';
 
 export interface ExpectedInput {
   label: string;                 // human label, e.g. "Dockerfile"
@@ -107,6 +111,7 @@ export interface ExpectedInput {
   anyOf?: string[];              // present if any of these root-relative files exist
   anyExtRecursive?: string[];    // present if any file with these extensions exists (e.g. ['.tf'])
   kind?: 'file' | 'url' | 'testSuite' | 'image'; // special resolution; defaults to 'file'
+  consequence?: string;          // plain-English risk if this input is missing (shown in the report)
 }
 
 export interface Scanner {

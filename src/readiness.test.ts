@@ -20,15 +20,19 @@ function tmp(files: Record<string, string>): string {
 const cfg: DatConfig = { scanners: {} as any, failOn: ['CRITICAL', 'HIGH'], profile: 'security' };
 
 test('checkReadiness', async (t) => {
-  await t.test('bare app: required inputs (config, DAST target) reported missing', async () => {
+  await t.test('bare app: critical inputs (config, DAST target) reported missing -> not production-safe', async () => {
     const dir = tmp({ 'package.json': '{"name":"x"}' }); // node, but no Dockerfile/tests/url/config
     const r = await checkReadiness(cfg, { configPath: '.dat.config.yaml', workspaceRoot: dir });
     fs.rmSync(dir, { recursive: true, force: true });
     assert.strictEqual(r.datConfigPresent, false);
-    assert.ok(r.requiredMissing > 0, 'expected required inputs missing');
-    // DAST target is required and absent (no url/deploy) -> counted.
+    assert.ok(r.criticalMissing > 0, 'expected critical inputs missing');
+    assert.strictEqual(r.requiredMissing, r.criticalMissing, 'requiredMissing aliases criticalMissing');
+    assert.strictEqual(r.readinessLevel, 'not-production-safe');
+    // DAST target is critical and absent (no url/deploy) -> counted, with consequence text.
     const zap = r.scanners.find(s => s.scanner === 'OWASP ZAP');
-    assert.ok(zap && zap.inputs.some(i => i.category === 'dastTarget' && !i.present && i.tier === 'required'));
+    const dast = zap?.inputs.find(i => i.category === 'dastTarget');
+    assert.ok(dast && !dast.present && dast.tier === 'critical');
+    assert.ok(dast!.consequence && dast!.consequence.length > 0, 'expected consequence text');
   });
 
   await t.test('DAST target satisfied by url', async () => {
@@ -46,14 +50,18 @@ test('checkReadiness', async (t) => {
     assert.strictEqual(r.datConfigPresent, true);
   });
 
-  await t.test('advisory missing does not inflate requiredMissing', async () => {
-    // standard profile includes Checkov (iac, advisory). With a Dockerfile, tests, config and no url,
-    // ensure advisory IaC/promptfoo absence lands in advisoryMissing, not requiredMissing.
-    const dir = tmp({ 'package.json': '{"scripts":{"test":"x"}}', 'Dockerfile': 'FROM node', '.dat.config.yaml': 'x: 1' });
+  await t.test('critical satisfied but highly-advised missing -> production-safe (not enterprise)', async () => {
+    // standard profile: Dockerfile + tests + config + deps satisfied; but no .tf (iac, highly-advised).
+    const dir = tmp({
+      'package.json': '{"scripts":{"test":"x"}}', // deps manifest + test script
+      'Dockerfile': 'FROM node',
+      '.dat.config.yaml': 'x: 1'
+    });
     const r = await checkReadiness({ ...cfg, profile: 'standard' }, { configPath: '.dat.config.yaml', workspaceRoot: dir });
     fs.rmSync(dir, { recursive: true, force: true });
-    assert.ok(r.advisoryMissing >= 0);
-    // Dockerfile present + config present + node test script => required (dockerfile, datConfig, testSuite) satisfied; standard has no dastTarget scanner.
-    assert.strictEqual(r.requiredMissing, 0, `expected 0 required missing, got ${r.requiredMissing}`);
+    assert.strictEqual(r.criticalMissing, 0, `expected 0 critical missing, got ${r.criticalMissing}`);
+    // Checkov's IaC (highly-advised) is absent -> production-safe, not enterprise-grade.
+    assert.strictEqual(r.readinessLevel, 'production-safe');
+    assert.ok(r.highlyAdvisedMissing > 0);
   });
 });

@@ -164,7 +164,7 @@ export const k6Scanner: Scanner = {
   module: 'testing',
   supportedLanguages: 'all',
   requiredBinaries: ['k6'],
-  expectedInputs: [{ label: 'DAST target URL', category: 'dastTarget', kind: 'url' }],
+  expectedInputs: [{ label: 'DAST target URL', category: 'dastTarget', kind: 'url', consequence: 'Performance and robustness under load are unmeasured.' }],
   async run(ctx) {
     const thresholdMs = ctx.config.scanners.k6?.thresholdMs || 500;
     return runK6(ctx.url, thresholdMs, ctx.authToken, ctx.config.scanners.k6?.failOnMissingTarget ?? true);

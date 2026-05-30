@@ -11,7 +11,7 @@ import { buildComponentModel, writeComponentModel } from './components/builder.j
 import { ComponentGraph } from './components/types.js';
 import { AggregatedReport, ScannerResult, DatConfig, Scanner, SupportedLanguage, ProfileName } from './types.js';
 import { PROFILES } from './profiles.js';
-import { isNotApplicable, DEFAULT_REQUIRED } from './inputs.js';
+import { isNotApplicable, DEFAULT_CRITICAL, DEFAULT_HIGHLY_ADVISED } from './inputs.js';
 import { checkReadiness, printReadiness } from './readiness.js';
 import { ALL_SCANNERS } from './scanners/index.js';
 import { calculateReadinessScore, deduplicateResults } from './utils.js';
@@ -267,9 +267,10 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       deployerEnabled: config.deployer?.enabled === true,
       detectedLanguages
     };
-    const required = config.preflight?.required ?? DEFAULT_REQUIRED;
+    const critical = config.preflight?.required ?? DEFAULT_CRITICAL;
+    const highlyAdvised = config.preflight?.highlyAdvised ?? DEFAULT_HIGHLY_ADVISED;
     scannersToRun = scannersToRun.filter(s => {
-      if (isNotApplicable(s, inputCtx, required)) {
+      if (isNotApplicable(s, inputCtx, critical, highlyAdvised)) {
         const inputLabels = (s.expectedInputs || []).map(i => i.label).join(', ');
         console.log(chalk.gray(`↷ Skipping ${s.name} (no ${inputLabels} found — not applicable)`));
         return false;

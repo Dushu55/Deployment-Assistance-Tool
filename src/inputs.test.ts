@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { isInputPresent, isNotApplicable, inputTier, DEFAULT_REQUIRED } from './inputs.js';
+import { isInputPresent, isNotApplicable, inputTier } from './inputs.js';
 import { Scanner } from './types.js';
 
 function tmp(files: Record<string, string>): string {
@@ -17,10 +17,13 @@ function tmp(files: Record<string, string>): string {
 }
 const baseCtx = (root: string, over: any = {}) => ({ workspaceRoot: root, detectedLanguages: [] as any, ...over });
 
-test('inputTier', () => {
-  assert.strictEqual(inputTier('dockerfile'), 'required');
-  assert.strictEqual(inputTier('iac'), 'advisory');
-  assert.strictEqual(inputTier('iac', ['iac']), 'required'); // override
+test('inputTier (3-tier)', () => {
+  assert.strictEqual(inputTier('dockerfile'), 'critical');
+  assert.strictEqual(inputTier('deps'), 'critical');        // supply chain promoted to critical
+  assert.strictEqual(inputTier('iac'), 'highly-advised');
+  assert.strictEqual(inputTier('promptfoo'), 'best-practice');
+  assert.strictEqual(inputTier('iac', ['iac']), 'critical'); // critical override
+  assert.strictEqual(inputTier('deps', [], ['deps']), 'highly-advised'); // highly-advised override
 });
 
 test('isInputPresent', async (t) => {
@@ -57,24 +60,31 @@ test('isNotApplicable (auto-detect prune rule)', async (t) => {
     assert.strictEqual(isNotApplicable(scanner(undefined), baseCtx('/x')), false);
   });
 
-  await t.test('advisory input absent -> prune', () => {
+  await t.test('best-practice input absent -> prune', () => {
     const dir = tmp({ 'README.md': '' });
-    const checkovLike = scanner([{ label: 'IaC', category: 'iac', anyExtRecursive: ['.tf'] }]);
-    assert.strictEqual(isNotApplicable(checkovLike, baseCtx(dir)), true);
+    const promptfooLike = scanner([{ label: 'promptfoo', category: 'promptfoo', anyOf: ['promptfooconfig.yaml'] }]);
+    assert.strictEqual(isNotApplicable(promptfooLike, baseCtx(dir)), true);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  await t.test('advisory input present -> keep', () => {
-    const dir = tmp({ 'main.tf': '' });
+  await t.test('best-practice input present -> keep', () => {
+    const dir = tmp({ 'promptfooconfig.yaml': '' });
+    const promptfooLike = scanner([{ label: 'promptfoo', category: 'promptfoo', anyOf: ['promptfooconfig.yaml'] }]);
+    assert.strictEqual(isNotApplicable(promptfooLike, baseCtx(dir)), false);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  await t.test('highly-advised input absent -> NOT pruned (gap must surface)', () => {
+    const dir = tmp({ 'README.md': '' });
     const checkovLike = scanner([{ label: 'IaC', category: 'iac', anyExtRecursive: ['.tf'] }]);
     assert.strictEqual(isNotApplicable(checkovLike, baseCtx(dir)), false);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  await t.test('required input absent -> NOT pruned (gap must surface)', () => {
+  await t.test('critical input absent -> NOT pruned (gap must surface)', () => {
     const dir = tmp({ 'README.md': '' });
     const hadolintLike = scanner([{ label: 'Dockerfile', category: 'dockerfile', anyOf: ['Dockerfile'] }]);
-    assert.strictEqual(isNotApplicable(hadolintLike, baseCtx(dir), DEFAULT_REQUIRED), false);
+    assert.strictEqual(isNotApplicable(hadolintLike, baseCtx(dir)), false);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });

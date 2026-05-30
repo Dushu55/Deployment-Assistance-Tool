@@ -84,7 +84,7 @@ export const garakScanner: Scanner = {
   module: 'llm',
   supportedLanguages: 'all',
   requiredBinaries: ['python3'],
-  expectedInputs: [{ label: 'DAST target URL (LLM endpoint)', category: 'dastTarget', kind: 'url' }],
+  expectedInputs: [{ label: 'DAST target URL (LLM endpoint)', category: 'dastTarget', kind: 'url', consequence: 'LLM endpoints are not red-teamed for prompt injection or data leakage.' }],
   async run(ctx) {
     return runGarak(ctx.url);
   }

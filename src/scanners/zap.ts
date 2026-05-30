@@ -131,7 +131,7 @@ export const zapScanner: Scanner = {
   module: 'security',
   supportedLanguages: 'all',
   requiredBinaries: ['docker'],
-  expectedInputs: [{ label: 'DAST target URL', category: 'dastTarget', kind: 'url' }],
+  expectedInputs: [{ label: 'DAST target URL', category: 'dastTarget', kind: 'url', consequence: 'Dynamic vulnerabilities (XSS, SQLi, CSRF, broken auth) are untested.' }],
   async run(ctx) {
     return runZap(ctx.url, ctx.authToken, ctx.config.scanners.zap?.failOnMissingTarget ?? true);
   }

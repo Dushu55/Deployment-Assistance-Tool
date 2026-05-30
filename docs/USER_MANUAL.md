@@ -163,26 +163,35 @@ A profile **overrides** the per-scanner `enabled` flags. Precedence: `--profile`
 in config → per-scanner `enabled` flags. Refine a profile further with `--only` / `--skip`.
 
 ### Auto-Detect (no manual pruning)
-By default DAT **skips scanners whose expected input is absent** — e.g. Checkov when there's no IaC,
-Promptfoo with no `promptfooconfig.yaml`, Keploy with no `./keploy`. Each is logged
-(`↷ Skipping … not applicable`). Required-tier gaps (Dockerfile, tests, DAST target) are **never**
-hidden this way — they still surface in the preflight. Disable with `--no-auto-detect` or
-`autoDetect: false` in config. (Auto-detect is bypassed when you use `--only`, since that's explicit.)
+By default DAT **skips scanners whose expected input is absent** — but only *best-practice*-tier ones
+(Promptfoo with no `promptfooconfig.yaml`, Keploy with no `./keploy`). Each is logged
+(`↷ Skipping … not applicable`). **Critical** and **highly-advised** gaps (Dockerfile, tests, DAST
+target, dependency manifest, IaC) are **never** hidden this way — they still surface in the preflight.
+Disable with `--no-auto-detect` or `autoDetect: false` in config. (Bypassed under `--only`.)
 
-### Application Readiness Preflight (`dat preflight`)
-Verify the target app has the files needed for a *meaningful* scan, **before** you run one — so
-gaps aren't discovered mid-scan or hidden by silent-pass scanners:
+### Application Readiness Preflight (`dat preflight`) — POC → Enterprise
+
+This is DAT's **POC-to-enterprise guide**. It verifies the target app has the inputs needed for a
+*meaningful* scan **before** you run one, and grades each gap by urgency with a plain-English
+explanation of the risk:
+
+| Tier | Meaning | Examples |
+|---|---|---|
+| ⛔ **Critical** | Fix before production — active vuln, unverified logic, or supply-chain exposure | DAST target, test suite, dependency manifest, Dockerfile, `.dat.config.yaml` |
+| ⚠️ **Highly advised** | Enterprise-grade gaps attackers exploit | IaC (Terraform), language lockfiles, container image (CIS) |
+| 💡 **Best practice** | Maturity gaps for a polished product | Promptfoo LLM eval, Keploy API regression |
+
+The report ends with a **Readiness Level** — `⛔ NOT PRODUCTION-SAFE` → `🟡 PRODUCTION-SAFE` →
+`✅ ENTERPRISE-GRADE` — telling you exactly what to fix to advance. Override tier membership via
+`preflight.required` (critical) and `preflight.highlyAdvised` in config.
 
 ```bash
 node dist/index.js preflight                 # readiness checklist (warn, exit 0)
 node dist/index.js preflight --strict        # exit non-zero if a REQUIRED input is missing (CI gate)
 node dist/index.js preflight --profile security --url https://app.example.com
 ```
-It reports, per enabled scanner, whether each expected input is present (✅), advisory-missing (⚠️),
-or required-missing (❌), plus any missing CLI tools. **Required tier** (blocks under `--strict`):
-Dockerfile, test suite, DAST target, `.dat.config.yaml`. Everything else (IaC, manifests, lockfiles,
-promptfoo/keploy configs, container image) is advisory. Override the required set via
-`preflight.required` in config.
+Missing inputs are grouped into the three tiers above, each with the tool that raised it and a
+one-line consequence. `--strict` exits non-zero when any **critical** input is missing (the CI gate).
 
 `dat scan` runs this check automatically at startup (warn mode); pass `--skip-preflight` to bypass
 it, or `--strict-preflight` to abort the scan when a required input is missing. Typical CI usage:

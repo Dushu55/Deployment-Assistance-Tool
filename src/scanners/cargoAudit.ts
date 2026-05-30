@@ -105,7 +105,7 @@ export const cargoAuditScanner: Scanner = {
   module: 'security',
   supportedLanguages: ['rust'],
   requiredBinaries: ['cargo'],
-  expectedInputs: [{ label: 'Cargo.lock', category: 'lockfile', anyOf: ['Cargo.lock'] }],
+  expectedInputs: [{ label: 'Cargo.lock', category: 'lockfile', anyOf: ['Cargo.lock'], consequence: 'Rust crate CVEs (RustSec advisories) are not checked.' }],
   async run(ctx) {
     return runCargoAudit(process.cwd(), ctx.detectedLanguages);
   }
