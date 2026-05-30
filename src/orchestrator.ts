@@ -104,7 +104,7 @@ export function getEnabledScanners(
     } else if (profileKeys) {
       if (!profileKeys.has(key)) return false;
     } else {
-      const scannerConfig = (config.scanners as any)[key];
+      const scannerConfig = (config.scanners as Record<string, { enabled?: boolean } | undefined>)[key];
       if (scannerConfig?.enabled !== true) return false;
     }
 
@@ -378,7 +378,7 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     const autoFixer = new AstGrepAutoFixer();
     console.log(chalk.cyan(`\n🛠️  Running Autonomous Remediation (AST Auto-Fixer)...`));
     // Default to env detector verify command if not set in config
-    const verifyCmd = (config as any).verifyCommand || envDetector.getVerifyCommand(detectedLanguages);
+    const verifyCmd = config.verifyCommand || envDetector.getVerifyCommand(detectedLanguages) || undefined;
     const fixResults = await autoFixer.applyAllFixes(verifyCmd, detectedLanguages);
     let totalFilesFixed = 0;
 
@@ -560,7 +560,7 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   // 11.5 Emit the machine-consumable fix manifest for coding agents (Claude Code).
   // Generated after the gate so it records the final score and gate state.
   if (options.fixManifest) {
-    const verifyCmd = (config as any).verifyCommand || envDetector.getVerifyCommand(detectedLanguages);
+    const verifyCmd = config.verifyCommand || envDetector.getVerifyCommand(detectedLanguages) || undefined;
     generateFixManifest(report, options.fixManifest, {
       verifyCommand: verifyCmd,
       failOn: config.failOn,

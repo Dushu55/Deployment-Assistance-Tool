@@ -41,7 +41,7 @@ failOn:
     }
   });
 
-  await t.test('FAULT TOLERANCE: should safely fallback to defaults if YAML is malformed', () => {
+  await t.test('FAIL-FAST: malformed YAML throws (a present-but-broken config is not silently ignored)', () => {
     const tempConfigPath = '.malformed.config.yaml';
     fs.writeFileSync(tempConfigPath, `
 scanners:
@@ -51,12 +51,18 @@ scanners:
       : invalid
 failOn: CRITICAL
 `);
-
     try {
-      const config = loadConfig(tempConfigPath);
-      // Should gracefully fall back to DEFAULT_CONFIG without crashing
-      assert.strictEqual(config.scanners.trivy?.enabled, true);
-      assert.deepStrictEqual(config.failOn, ['CRITICAL', 'HIGH']);
+      assert.throws(() => loadConfig(tempConfigPath), /invalid YAML|Invalid \.dat\.config/);
+    } finally {
+      fs.unlinkSync(tempConfigPath);
+    }
+  });
+
+  await t.test('FAIL-FAST: invalid enum value throws a readable schema error', () => {
+    const tempConfigPath = '.badenum.config.yaml';
+    fs.writeFileSync(tempConfigPath, `failOn:\n  - NONSENSE\n`);
+    try {
+      assert.throws(() => loadConfig(tempConfigPath), /Invalid \.dat\.config\.yaml[\s\S]*failOn/);
     } finally {
       fs.unlinkSync(tempConfigPath);
     }

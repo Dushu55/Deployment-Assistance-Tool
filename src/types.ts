@@ -44,6 +44,8 @@ export interface AggregatedReport {
 // --- CONFIG TYPES ---
 export interface DatConfig {
   autoFix?: { enabled?: boolean };
+  verifyCommand?: string; // override the auto-fix verification command (e.g. "npm test")
+  runner?: { maxConcurrency?: number; scannerTimeoutMs?: number }; // resilience controls
   scanners: {
     semgrep?: { enabled: boolean; rules?: string[]; customRulesDir?: string };
     trivy?: { enabled: boolean; generateSbom?: boolean; sbomPath?: string };

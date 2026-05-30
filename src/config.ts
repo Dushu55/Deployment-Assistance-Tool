@@ -2,6 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'yaml';
 import { DatConfig } from './types.js';
+import { parseConfig } from './configSchema.js';
+
+type ScannerEntry = { enabled?: boolean } & Record<string, unknown>;
 
 const DEFAULT_CONFIG: DatConfig = {
   // Safe by default: auto-fix mutates the working tree, so it must be opted into
@@ -20,32 +23,29 @@ const DEFAULT_CONFIG: DatConfig = {
 
 export function loadConfig(configPath: string = '.dat.config.yaml'): DatConfig {
   const fullPath = path.resolve(process.cwd(), configPath);
-  
-  if (fs.existsSync(fullPath)) {
-    try {
-      const fileContents = fs.readFileSync(fullPath, 'utf8');
-      const parsedConfig = yaml.parse(fileContents);
-      // Deep merge defaults with user configuration
-      const mergedScanners = { ...DEFAULT_CONFIG.scanners };
-      
-      if (parsedConfig.scanners) {
-        for (const [key, value] of Object.entries(parsedConfig.scanners)) {
-          (mergedScanners as any)[key] = {
-            ...((mergedScanners as any)[key] || {}),
-            ...(value as object)
-          };
-        }
-      }
 
-      return { 
-        ...DEFAULT_CONFIG, 
-        ...parsedConfig,
-        scanners: mergedScanners
-      };
-    } catch (err) {
-      console.warn(`[Config] Failed to parse ${configPath}. Using defaults. Error: ${(err as Error).message}`);
+  // Missing config → safe defaults (unchanged behaviour).
+  if (!fs.existsSync(fullPath)) {
+    return DEFAULT_CONFIG;
+  }
+
+  // A present-but-broken config is a real misconfiguration → fail fast (no silent fallback).
+  let parsedConfig: any;
+  try {
+    parsedConfig = yaml.parse(fs.readFileSync(fullPath, 'utf8'));
+  } catch (err) {
+    throw new Error(`[Config] Failed to parse ${configPath} (invalid YAML): ${(err as Error).message}`);
+  }
+
+  // Deep-merge per-scanner config over the defaults.
+  const mergedScanners: Record<string, ScannerEntry> = { ...(DEFAULT_CONFIG.scanners as Record<string, ScannerEntry>) };
+  if (parsedConfig?.scanners) {
+    for (const [key, value] of Object.entries(parsedConfig.scanners)) {
+      mergedScanners[key] = { ...(mergedScanners[key] || {}), ...(value as ScannerEntry) };
     }
   }
-  
-  return DEFAULT_CONFIG;
+
+  const merged = { ...DEFAULT_CONFIG, ...parsedConfig, scanners: mergedScanners };
+  // Validate types/enums; throws an aggregated, readable error on any violation.
+  return parseConfig(merged);
 }
