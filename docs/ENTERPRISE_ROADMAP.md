@@ -98,7 +98,10 @@ Key additions to the existing engine: a **Component Model** (§2 builder), **Com
 
 > **Status (2026-05-30): substantially DONE.** Repo under version control + CODEOWNERS; scrap removed;
 > Defects A, B, C, D, E, I closed with tests; presence-only tests replaced (40→80); docs reconciled.
-> Remaining: GitHub branch-protection settings (out-of-band), broader parser-test coverage.
+> Remaining: broader parser-test coverage. (GitHub branch protection on `main` is now ENABLED —
+> repo made public; require-PR + CI status check `Run DevSecOps Scanners` (strict/up-to-date) +
+> dismiss-stale + linear history + no force-push/deletion; admins not enforced so maintainers can
+> still hotfix.)
 
 Make the existing tool trustworthy and the repo professional. Prerequisite for everything else.
 
