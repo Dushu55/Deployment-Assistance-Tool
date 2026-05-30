@@ -5,6 +5,9 @@
 try { (process as any).loadEnvFile?.(); } catch { /* no .env present — fine */ }
 
 import { Command } from 'commander';
+// Re-register secret values now that .env is loaded (the logger registered at import, pre-.env).
+import { registerEnvSecrets } from './utils/redact.js';
+registerEnvSecrets();
 import chalk from 'chalk';
 import { runDatPipeline } from './orchestrator.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';

@@ -1,16 +1,21 @@
 import winston from 'winston';
 import 'winston-daily-rotate-file';
+import { redactString, redactDeep, registerEnvSecrets } from './utils/redact.js';
 
 const isCi = process.env.CI === 'true';
 
-// Basic sensitive data redaction formatter
+// Register literal env-var secret values so they're scrubbed wherever they appear.
+registerEnvSecrets();
+
+// Redact secrets from BOTH the message and the structured metadata (the previous formatter only
+// scrubbed `message`, so a token in a meta field would leak).
 const redactSensitiveData = winston.format((info) => {
-  if (info.message && typeof info.message === 'string') {
-    // Redact Bearer tokens, private keys, API keys using simple regex
-    let msg = info.message as string;
-    msg = msg.replace(/Bearer\s+[A-Za-z0-9\-\._~+\/]+/gi, 'Bearer [REDACTED]');
-    msg = msg.replace(/(api_key|apiKey|secret|token)["':=\s]+[A-Za-z0-9\-\_]+/gi, '$1: [REDACTED]');
-    info.message = msg;
+  if (typeof info.message === 'string') {
+    info.message = redactString(info.message);
+  }
+  for (const key of Object.keys(info)) {
+    if (key === 'message' || key === 'level' || key === 'timestamp') continue;
+    (info as Record<string, unknown>)[key] = redactDeep((info as Record<string, unknown>)[key]);
   }
   return info;
 });
