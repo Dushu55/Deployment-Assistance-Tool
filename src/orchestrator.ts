@@ -155,7 +155,8 @@ export function runScannerWithTimeout(scanner: any, context: any, timeoutMs: num
       scannerName: scanner.name, success: false, durationMs: timeoutMs, issues: [],
       error: `Scanner timed out after ${timeoutMs}ms (wall-clock limit). Increase runner.scannerTimeoutMs if legitimate.`
     }), timeoutMs);
-    if (typeof (timer as any).unref === 'function') (timer as any).unref();
+    // NB: do NOT unref() — the timeout IS the resolution path for a hung scanner, so it must keep
+    // the event loop alive until it fires. (unref made the promise hang on Node 20.)
 
     Promise.resolve()
       .then(() => scanner.run(context))
