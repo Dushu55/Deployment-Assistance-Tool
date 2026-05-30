@@ -186,21 +186,40 @@ Per-component checks for fail-safe attributes, robustness, and coherence. Two ti
 > added. 18 new tests; verified end-to-end. (This took the original "Phase 4" slot per stakeholder
 > priority; the ops-hardening items below move to Phase 4b/5.)
 
-### Phase 4b — Enterprise Hardening  *(≈3–5 ew · Risk: Medium)*
+### Phase 4b — Enterprise Hardening  *(DONE — 2026-05-30)*
 
-- [ ] **Config & secrets**: schema-validate `.dat.config.yaml` (defect: `as any` casts); move all secrets to a secret manager; never log secrets (audit `logger.ts`).
-- [ ] **AuthN/Z & multi-tenancy** for the GitHub App / service surface; tighten the `author_association` gate; add org/repo allow-lists.
-- [ ] **Observability**: structured logs (already Winston), metrics (scan duration, per-scanner success rate, false-positive feedback), traces; a health endpoint.
-- [ ] **Supply-chain provenance of DAT itself**: pin tool versions, generate DAT's own SBOM, sign releases.
-- [ ] **Resilience**: per-scanner timeouts already exist; add circuit-breaking for chronically failing tools and partial-result reporting.
-- [ ] **Reachability upgrade** (defect F): move from regex to AST/call-graph for the top languages, or adopt official scanner reachability where available.
+> Shipped: config **schema validation** (zod, fail-fast, `as any` casts removed); **secret-redaction**
+> hardening (GitHub/AWS/GCP/PEM/URL-creds + env-value registry, message + metadata) in `src/utils/redact.ts`;
+> **per-scanner observability** in the `PIPELINE_END` audit event; **resilience** (configurable
+> concurrency + per-scanner wall-clock timeout, `runner` config); **webhook authz** (`src/agent/authz.ts`
+> — trusted association + org/repo allow-lists + per-repo rate limit); and **CI supply-chain provenance**
+> (pinned tool versions, DAT self-SBOM, build-provenance attestation). +38 tests (192→230).
 
-### Phase 5 — Scale & GA  *(≈3–4 ew · Risk: Medium)*
+- [x] **Config & secrets** — schema validation + redaction hardening shipped. (Centralised secret
+  *manager* integration, e.g. Vault/GSM, remains a deployment-time option, not code.)
+- [x] **AuthN/Z** — trusted-association gate + org/repo allow-lists + rate limiting shipped.
+- [x] **Observability** — per-scanner duration/success/skip metrics in the structured audit event.
+  *(A live `/metrics` or `/health` endpoint is a hosted-service add-on — deferred to Phase 5.)*
+- [x] **Supply-chain provenance** — tool pins + DAT SBOM + attestation. *(cosign release signing → Phase 5.)*
+- [x] **Resilience** — per-scanner wall-clock timeout + configurable concurrency. *(Cross-invocation
+  circuit-breaking + Redis-backed distributed rate limiting → hosted multi-instance, Phase 5.)*
 
+### Phase 5 — Scale, GA & deferred hardening  *(≈3–4 ew · Risk: Medium)*
+
+- [ ] **Reachability AST/call-graph upgrade** (defect F): replace the current regex/import-heuristic
+  reachability (`src/reachability/index.ts`, fail-open today) with true AST/call-graph analysis —
+  per-language parsers (Babel/TS for JS/TS, Python `ast`, Roslyn for C#, tree-sitter as a common
+  layer). Catches dynamic/aliased imports and re-exports the regex misses. **~3–4 weeks, high risk**
+  (parser deps, latency, maintenance surface); regex fail-open is acceptable in the interim, so this
+  is its own phase. Consider adopting official scanner reachability (e.g. Trivy/CodeQL) instead of
+  building bespoke parsers.
+- [ ] Live `/metrics` + `/health` endpoints; cosign/sigstore release signing; cross-invocation
+  circuit-breaker + Redis-backed distributed rate limiting (hosted multi-instance).
 - [ ] Monorepo scale tests; incremental/changed-files-only scanning for PR latency.
 - [ ] Caching of scanner results keyed by content hash.
 - [ ] Feedback loop: capture accept/reject on findings and fixes to tune rules and LLM prompts (the telemetry hooks are scaffolded in the plan but not real yet — make them real).
 - [ ] Hosted dashboard + trend reporting; quality-gate policy-as-code.
+- [ ] GA docs, SLAs, onboarding.
 - [ ] GA docs, SLAs, onboarding.
 
 #### End-user interface (selection & consumption)

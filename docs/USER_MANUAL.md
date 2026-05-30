@@ -491,3 +491,43 @@ without external docs.
 | fail-safe | When something goes wrong, the app does the unsafe thing. |
 | best-practice | Drift that makes the system harder to secure/maintain. |
 | coverage | A check could not run — the area is unverified, not proven safe. |
+
+---
+
+## 14. Enterprise Hardening & Operations
+
+**Config validation (fail-fast).** `.dat.config.yaml` is validated against a schema on load. A
+**missing** file uses safe defaults, but a **present-but-invalid** file (bad YAML, an unknown enum
+like `failOn: [NONSENSE]`, a non-boolean `enabled`, etc.) **fails the run immediately** with a
+readable, aggregated error listing every problem — misconfigurations surface at once rather than
+silently mis-running the gate.
+
+**Secret redaction.** All log output (console and the rotating files under `logs/`) is scrubbed of
+credentials — GitHub (`ghp_`/`github_pat_`/`gho_`), AWS (`AKIA…`), Google (`AIza…`), Slack, PEM
+private keys, `user:pass@` URL credentials, `key=value` secrets, and the literal values of sensitive
+env vars (`GEMINI_API_KEY`, `GITHUB_TOKEN`, `*_TOKEN/_SECRET/_API_KEY`, …). Redaction covers both the
+message and structured metadata.
+
+**Observability.** The structured `PIPELINE_END` audit event (in `logs/dat-audit-*.log`, JSON in CI)
+now carries per-scanner metrics — `{ name, durationMs, success, skipped, issueCount }` — plus
+run/failed/skipped totals, ready to ship to a log/metrics backend.
+
+**Resilience.** Each scanner runs under a hard wall-clock timeout, so one that hangs can't stall the
+pipeline (it's reported as `timed out` and the run continues). Tune in `.dat.config.yaml`:
+```yaml
+runner:
+  maxConcurrency: 4         # parallel scanners
+  scannerTimeoutMs: 600000  # per-scanner hard limit (ms)
+```
+
+**Hosted GitHub App authorization.** Webhook-triggered scans require a trusted `author_association`
+and honour optional allow-lists + a per-repo rate limit (env vars; empty = allow all):
+```
+DAT_ALLOWED_ORGS=acme,globex
+DAT_ALLOWED_REPOS=acme/app,acme/api
+DAT_RATE_LIMIT_PER_HOUR=20        # 0 disables
+```
+(The rate limiter is in-memory — correct for a single instance; use a shared store for multi-instance.)
+
+**Supply-chain provenance.** CI pins all scanner-tool versions, generates DAT's own CycloneDX SBOM,
+and attests build provenance for it.

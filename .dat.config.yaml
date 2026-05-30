@@ -87,6 +87,12 @@ failOn:
   - CRITICAL
   - HIGH
 
+# Resilience controls. maxConcurrency caps parallel scanners; scannerTimeoutMs is a hard
+# wall-clock bound per scanner (a hung scanner is reported 'timed out' and the run continues).
+# runner:
+#   maxConcurrency: 4
+#   scannerTimeoutMs: 600000
+
 # Ephemeral deployment for DAST (OWASP ZAP / k6). When enabled (or when `dat scan --deploy`
 # is passed), DAT provisions a short-lived GCP Cloud Run preview, scans it, then tears it
 # down. Cost is kept near-zero: scale-to-zero, capped instances, minimal CPU/memory, no
