@@ -169,7 +169,7 @@ The conceptual heart of the product. Build a typed inventory of the application'
 Per-component checks for fail-safe attributes, robustness, and coherence. Two tiers:
 
 - [x] **Deterministic rule evaluators** (fast, cheap, high-precision) — shipped (see status above).
-- [ ] **LLM reasoning evaluator** (judgment calls) for robustness & coherence: given a component + its context slice, ask whether failure modes are handled and whether behavior is coherent with sibling components. Use structured output; **always** attach the deterministic evidence so findings are auditable, never LLM-only assertions.
+- [x] **LLM reasoning evaluator** (judgment calls) for robustness & coherence — shipped. Backend-agnostic provider (AI Studio key **or** Vertex on the GCP project; consumer "AI Pro" plan is not a valid backend). Batched, evidence-required, confidence-gated, severity-capped (advisory by default, never blocks the gate unless `allowBlocking`), opt-in via `--llm-eval`. Degrades gracefully on any backend/parse failure (verified against a live 403). `src/evaluators/component/llm.ts`, `src/llm/index.ts`.
 - [x] Both tiers emit standard `Issue[]` with `componentRef` set → flow through existing dedup/score/gate/manifest unchanged. *(deterministic tier done)*
 - [ ] Add a confidence/abstention path: LLM findings below a confidence threshold are reported as advisory, not gate-blocking, to control false positives.
 - [ ] **Richer structural edges:** build `contains` (form→input) and `submits` (button/form→ApiCall) edges in `buildComponentModel` to unlock form-level coherence rules.

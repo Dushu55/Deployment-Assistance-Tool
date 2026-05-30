@@ -10,6 +10,8 @@ import { generateFixManifest } from './reporters/fixManifest.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
 import { ComponentGraph } from './components/types.js';
 import { evaluateComponentGraph } from './evaluators/component/index.js';
+import { evaluateComponentGraphLLM } from './evaluators/component/llm.js';
+import { llmProvider } from './llm/index.js';
 import { AggregatedReport, ScannerResult, DatConfig, Scanner, SupportedLanguage, ProfileName } from './types.js';
 import { PROFILES } from './profiles.js';
 import { isNotApplicable, DEFAULT_CRITICAL, DEFAULT_HIGHLY_ADVISED } from './inputs.js';
@@ -119,6 +121,7 @@ export interface DatRunOptions {
   fixManifest?: string; // machine-consumable findings for coding agents (Claude Code)
   componentModel?: string; // emit the application/component graph (Phase 2)
   skipComponentEval?: boolean; // disable Phase 3 per-component evaluators
+  llmEval?: boolean; // opt-in: run the LLM reasoning tier of the component evaluator
   pushDojo?: boolean;
   pushDtrack?: boolean;
   only?: string;
@@ -210,6 +213,9 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   
   // 1. Load config
   const config = loadConfig(configPath);
+
+  // Configure the LLM backend once (Vertex on the GCP project when set, else GEMINI_API_KEY).
+  llmProvider.configure({ ...config.llm, project: config.llm?.project ?? config.deployer?.gcp?.projectId });
 
   // 1.5 Application-readiness preflight (warn by default). Verifies the target app has the
   // expected input files BEFORE scanning, so missing inputs aren't discovered mid-scan (or hidden
@@ -400,6 +406,27 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     const affected = new Set(evalResult.issues.map(i => `${i.file}:${i.line}`)).size;
     console.log(chalk.cyan(`\n🧩 Component Evaluator: ${evalResult.issues.length} finding(s) across ${affected} component(s).`));
     results.push(evalResult);
+
+    // 5.7b LLM reasoning tier (opt-in). Advisory by default; never throws into the pipeline.
+    const llmEnabled = (options.llmEval || config.componentEval?.llm?.enabled === true);
+    if (llmEnabled && llmProvider.isAvailable()) {
+      const llmStart = Date.now();
+      try {
+        const llmIssues = await evaluateComponentGraphLLM(componentGraph, evalResult.issues, {
+          maxComponents: config.componentEval?.llm?.maxComponents,
+          allowBlocking: config.componentEval?.llm?.allowBlocking,
+          model: config.componentEval?.llm?.model
+        });
+        console.log(chalk.magenta(`🧠 Component Evaluator (LLM): ${llmIssues.length} advisory finding(s).`));
+        if (llmIssues.length > 0) {
+          results.push({ scannerName: 'Component Evaluator (LLM)', success: true, durationMs: Date.now() - llmStart, issues: llmIssues });
+        }
+      } catch (e: any) {
+        logger.warn(`LLM evaluator skipped: ${e.message}`);
+      }
+    } else if (llmEnabled) {
+      console.log(chalk.gray('🧠 LLM evaluator requested but no Gemini backend configured (set GEMINI_API_KEY or a GCP project). Skipping.'));
+    }
   }
 
   // 6. Aggregate and Deduplicate Results (global fingerprint dedup across all scanners)

@@ -76,7 +76,21 @@ export interface DatConfig {
   profile?: ProfileName;                  // one-word scanner selection; overrides per-scanner enabled flags
   autoDetect?: boolean;                   // prune scanners whose advisory inputs are absent (default true)
   preflight?: { required?: InputCategory[]; highlyAdvised?: InputCategory[] }; // override tier membership (required == critical)
-  componentEval?: { enabled?: boolean }; // per-component evaluators over the component graph (default enabled)
+  componentEval?: {
+    enabled?: boolean;                   // deterministic per-component evaluators (default enabled)
+    llm?: {                              // LLM reasoning tier (Phase 3 tier 2) — opt-in
+      enabled?: boolean;                 // default false (cost); also enabled by --llm-eval
+      maxComponents?: number;            // cap components sent to the model (default 20)
+      allowBlocking?: boolean;           // allow LLM findings to exceed MEDIUM and block the gate (default false)
+      model?: string;                    // override model id
+    };
+  };
+  llm?: {
+    provider?: 'vertex' | 'apikey';      // default: auto (apikey if GEMINI_API_KEY, else vertex if a project is set)
+    project?: string;                    // Vertex project (defaults to deployer.gcp.projectId / GCP_PROJECT_ID)
+    location?: string;                   // Vertex region (default us-central1)
+    model?: string;                      // default gemini-2.5-flash
+  };
   deployer?: {
     enabled?: boolean;
     provider?: 'gcp' | 'vercel';

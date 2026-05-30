@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// Load .env at repo root so the CLI picks up GEMINI_API_KEY and other vars (the GitHub App path
+// loads it via Probot; the CLI did not). Zero-dependency, built into Node ≥20.6.
+try { (process as any).loadEnvFile?.(); } catch { /* no .env present — fine */ }
+
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { runDatPipeline } from './orchestrator.js';
@@ -36,6 +40,7 @@ program
   .option('--dry-run', 'Show which scanners would run without executing them')
   .option('--no-auto-detect', 'Do not prune scanners whose expected input is absent (run all selected scanners)')
   .option('--skip-component-eval', 'Disable per-component evaluators (fail-safe/robustness/coherence checks over the component graph)')
+  .option('--llm-eval', 'Enable the LLM reasoning tier of the component evaluator (advisory; requires a Gemini backend — GEMINI_API_KEY or Vertex on a GCP project)')
   .option('--skip-preflight', 'Skip the application-readiness check at scan start')
   .option('--strict-preflight', 'Abort the scan if a required input (Dockerfile / tests / DAST target / config) is missing')
   .option('--auto-fix', 'Apply autonomous AST auto-fixes to the working tree (mutates files; verified by your test suite and reverted on failure)')

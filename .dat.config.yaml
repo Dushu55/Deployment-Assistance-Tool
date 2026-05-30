@@ -20,6 +20,21 @@
 # Disable with `componentEval: { enabled: false }` or the --skip-component-eval flag.
 # componentEval:
 #   enabled: true
+#   # LLM reasoning tier (Phase 3 tier 2) — opt-in (off by default for cost). Also enable with
+#   # the --llm-eval flag. Findings are advisory (capped at MEDIUM) unless allowBlocking: true.
+#   llm:
+#     enabled: false
+#     maxComponents: 20      # cap components sent to the model per run (cost control)
+#     allowBlocking: false   # if true, LLM findings may exceed MEDIUM and block the gate
+#     # model: gemini-2.5-flash
+#
+# llm: choose the Gemini backend (default: auto — API key if GEMINI_API_KEY set, else Vertex on a
+# GCP project). The consumer "Google AI Pro" plan cannot be used for API access.
+# llm:
+#   provider: apikey        # apikey | vertex
+#   # project: dat-tool     # Vertex; defaults to deployer.gcp.projectId
+#   # location: us-central1
+#   # model: gemini-2.5-flash
 # -------------------------------------------------------------------------------------
 
 scanners:

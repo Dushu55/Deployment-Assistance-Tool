@@ -339,6 +339,38 @@ Security gaps block under the default `failOn: [CRITICAL, HIGH]`; robustness/coh
 findings advise (heuristic extraction, so they don't fail the build). Each finding carries its
 `file:line`, a concrete remediation, the precise `category`, and a `componentRef` in the manifest.
 
+### LLM Reasoning Tier (`--llm-eval`)
+On top of the deterministic rules, DAT can ask Gemini to reason about robustness/coherence/fail-safe
+failure modes the rules can't express. It is **opt-in** (off by default) and **advisory**: findings
+are capped at MEDIUM and never block the gate unless you set `componentEval.llm.allowBlocking: true`.
+
+```bash
+node dist/index.js scan --llm-eval
+```
+
+**Connecting to Gemini** — your **"Google AI Pro" consumer subscription cannot be used** for API
+calls. Choose one programmatic backend (DAT auto-detects, no code change to switch):
+
+* **AI Studio API key** (simplest, free tier): get a key (`AIza…`) at
+  [aistudio.google.com/apikey](https://aistudio.google.com/apikey), then add to `.env`:
+  ```
+  GEMINI_API_KEY=AIza...
+  ```
+  > The CLI loads `.env` automatically (`process.loadEnvFile()`). **Never commit `.env`.** For CI,
+  > set `GEMINI_API_KEY` as a pipeline secret instead.
+* **Vertex AI** on your GCP project (reuses gcloud auth, bills through GCP):
+  ```bash
+  gcloud auth application-default login
+  # in .env or environment:
+  GOOGLE_GENAI_USE_VERTEXAI=true   # project defaults to GCP_PROJECT_ID / deployer.gcp.projectId
+  ```
+
+**Safety & cost controls:** one batched call over a capped set of the riskiest components
+(`maxComponents`, default 20); evidence-required + confidence-gated (findings without a cited
+attribute are dropped); a missing/invalid backend or unparseable response **degrades gracefully** —
+the tier reports 0 findings and the scan continues. Configure under `componentEval.llm` in
+`.dat.config.yaml`.
+
 ---
 
 ## 10. Fix Manifest for Claude Code (`--fix-manifest`)
