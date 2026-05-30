@@ -31,6 +31,8 @@ program
   .option('--sarif <path>', 'Output results in SARIF format', 'results/dat-report.sarif')
   .option('--csv <path>', 'Output results in CSV format', 'results/dat-report.csv')
   .option('--pdf <path>', 'Output results in professional PDF format', 'results/dat-report.pdf')
+  .option('--html <path>', 'Output a self-contained, shareable HTML report (explains scores, severities, and fixes)', 'results/dat-report.html')
+  .option('--explain', 'Print the full glossary + score breakdown + gate rationale to the console')
   .option('--fix-manifest <path>', 'Output machine-consumable findings for coding agents (Claude Code)', 'results/dat-fix-manifest.json')
   .option('--component-model <path>', 'Emit the application/component graph (buttons, inputs, API calls, network) and link findings to components', 'results/dat-component-model.json')
   .option('--push-dojo', 'Push SARIF report to DefectDojo (requires env vars DEFECTDOJO_URL, DEFECTDOJO_API_KEY)')

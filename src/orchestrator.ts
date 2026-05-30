@@ -4,6 +4,10 @@ import { printReport } from './reporter.js';
 import { generateSarif } from './reporters/sarif.js';
 import { generateCsv } from './reporters/csv.js';
 import { generatePdf } from './reporters/pdf.js';
+import { generateHtml, ReportContext } from './reporters/html.js';
+import { explainReadinessScore } from './utils.js';
+import { explainGate } from './explain.js';
+import type { ReadinessLevel } from './readiness.js';
 import { pushToDefectDojo } from './reporters/defectdojo.js';
 import { pushToDependencyTrack } from './reporters/dependencyTrack.js';
 import { generateFixManifest } from './reporters/fixManifest.js';
@@ -118,6 +122,8 @@ export interface DatRunOptions {
   sarif?: string;
   csv?: string;
   pdf?: string;
+  html?: string; // self-contained, shareable HTML report
+  explain?: boolean; // verbose console explanations (glossary, score breakdown, gate rationale)
   fixManifest?: string; // machine-consumable findings for coding agents (Claude Code)
   componentModel?: string; // emit the application/component graph (Phase 2)
   skipComponentEval?: boolean; // disable Phase 3 per-component evaluators
@@ -220,6 +226,7 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   // 1.5 Application-readiness preflight (warn by default). Verifies the target app has the
   // expected input files BEFORE scanning, so missing inputs aren't discovered mid-scan (or hidden
   // by silent-pass scanners). Bypass with --skip-preflight; abort with --strict-preflight.
+  let readinessLevel: ReadinessLevel | undefined;
   if (!options.skipPreflight) {
     const readiness = await checkReadiness(config, {
       configPath,
@@ -228,6 +235,7 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       profile: options.profile ?? config.profile,
       detectedLanguages
     });
+    readinessLevel = readiness.readinessLevel;
     printReadiness(readiness);
     if (options.strictPreflight && readiness.requiredMissing > 0) {
       throw new Error(`Preflight failed: ${readiness.requiredMissing} required input(s) missing. Configure them or run without --strict-preflight.`);
@@ -450,28 +458,46 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
 
   const totalIssuesFound = Object.values(report.summary).reduce((a, b) => a + b, 0);
 
-  // 7. Print Report
-  printReport(report);
+  // 7. Print Report (with an always-on severity legend; full glossary under --explain)
+  printReport(report, { explain: options.explain });
 
   // 8. Readiness Score
   const score = calculateReadinessScore(report.summary);
   const scoreColor = score >= 80 ? chalk.green.bold : (score >= 50 ? chalk.yellow.bold : chalk.red.bold);
   console.log(`   ${chalk.bold('Deployment Readiness Score:')} ${scoreColor(`${score}/100`)}\n`);
 
+  // 8.5 Under --explain, show HOW the score was derived and WHY the gate will pass/fail.
+  if (options.explain) {
+    const si = explainReadinessScore(report.summary);
+    console.log(chalk.bold('   How the score was calculated:') + chalk.gray(`  (${si.formula})`));
+    si.breakdown.forEach(r => console.log(chalk.gray(`     ${r.severity}: ${r.count} × weight ${r.weight} → −${r.penalty}`)));
+    console.log(chalk.gray(`     Total penalty −${si.totalPenalty} → ${si.score}/100 (${si.bandMeaning})`));
+    const g = explainGate(config.failOn, report.summary);
+    console.log(chalk.bold('   Quality gate:') + chalk.gray(` ${g.rationale}`));
+  }
+
+  // Report context shared by the HTML and PDF reporters.
+  const reportContext: ReportContext = { report, score, failOn: config.failOn, readinessLevel };
+
   // 9. Generate Exports
   if (options.sarif) {
     generateSarif(report, options.sarif);
     console.log(chalk.gray(`💾 SARIF report saved to ${options.sarif}`));
   }
-  
+
   if (options.csv) {
     generateCsv(report, options.csv);
     console.log(chalk.gray(`📄 CSV report saved to ${options.csv}`));
   }
 
+  if (options.html) {
+    generateHtml(reportContext, options.html);
+    console.log(chalk.gray(`🌐 HTML report saved to ${options.html} (shareable, self-explaining)`));
+  }
+
   if (options.pdf) {
     console.log(chalk.cyan(`\n📑 Generating Professional PDF Report (This may take a moment)...`));
-    await generatePdf(report, options.pdf);
+    await generatePdf(reportContext, options.pdf);
     console.log(chalk.gray(`📑 PDF report saved to ${options.pdf}`));
   }
 

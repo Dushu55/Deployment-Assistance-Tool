@@ -176,7 +176,17 @@ Per-component checks for fail-safe attributes, robustness, and coherence. Two ti
 
 **Exit criteria:** for a sample app, DAT reports per-component fail-safe/robustness/coherence findings with evidence, and they appear in both the human report and the fix manifest. *(met for the deterministic tier; LLM tier is the next step.)*
 
-### Phase 4 — Enterprise Hardening  *(≈3–5 ew · Risk: Medium)*
+### Phase 4 — Explainability & Stakeholder Reporting  *(DONE — 2026-05-30)*
+
+> Reports are now self-explaining via one source of truth (`src/explain.ts`): a "How to read this
+> report" glossary + dynamic breakdowns (how the score was computed, why the gate passed/failed,
+> per-finding category + why-it-matters). Surfaced in a new shareable **HTML report**
+> (`src/reporters/html.ts`, `--html`), the enriched **PDF** (shared template), the **console**
+> (`--explain`), and a **fix-manifest `glossary`** block. `explainReadinessScore` + `explainGate`
+> added. 18 new tests; verified end-to-end. (This took the original "Phase 4" slot per stakeholder
+> priority; the ops-hardening items below move to Phase 4b/5.)
+
+### Phase 4b — Enterprise Hardening  *(≈3–5 ew · Risk: Medium)*
 
 - [ ] **Config & secrets**: schema-validate `.dat.config.yaml` (defect: `as any` casts); move all secrets to a secret manager; never log secrets (audit `logger.ts`).
 - [ ] **AuthN/Z & multi-tenancy** for the GitHub App / service surface; tighten the `author_association` gate; add org/repo allow-lists.

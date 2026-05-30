@@ -5,6 +5,7 @@ import { ALL_SCANNERS } from '../scanners/index.js';
 import { issueFingerprint } from '../utils.js';
 import { ComponentGraph } from '../components/types.js';
 import { locateComponent } from '../components/builder.js';
+import { buildGlossary } from '../explain.js';
 
 /**
  * The Fix Manifest is DAT's machine-consumable contract for coding agents (e.g. Claude Code).
@@ -42,6 +43,7 @@ export interface FixManifest {
   gate: { passed: boolean; failOn: Severity[]; readinessScore: number };
   summary: AggregatedReport['summary'];
   coverageGaps: { scanner: string; reason: string }[];
+  glossary: ReturnType<typeof buildGlossary>; // explains what every value/score/category means
   findings: FixFinding[];
 }
 
@@ -146,6 +148,7 @@ export function buildFixManifest(
     },
     summary: report.summary,
     coverageGaps,
+    glossary: buildGlossary(report.summary),
     findings
   };
 }

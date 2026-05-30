@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { AggregatedReport, Severity, Issue } from './types.js';
+import { SEVERITY_EXPLANATIONS, CATEGORY_EXPLANATIONS, PIPELINE_OVERVIEW } from './explain.js';
 
 const SEVERITY_COLORS: Record<Severity, any> = {
   CRITICAL: chalk.bgRed.white.bold,
@@ -9,7 +10,7 @@ const SEVERITY_COLORS: Record<Severity, any> = {
   INFO: chalk.gray
 };
 
-export function printReport(report: AggregatedReport): void {
+export function printReport(report: AggregatedReport, opts: { explain?: boolean } = {}): void {
   console.log('\n' + chalk.bold.underline('📊 Deployment Assist Tool - Scan Report'));
   console.log(`⏱️  Total Duration: ${(report.totalDurationMs / 1000).toFixed(2)}s\n`);
 
@@ -53,6 +54,24 @@ export function printReport(report: AggregatedReport): void {
   console.log(`\n   Total Issues: ${totalIssues}`);
   if (skippedCount > 0) {
     console.log(chalk.yellow(`   ⚠️  ${skippedCount} scanner(s) SKIPPED (tool unavailable) — coverage is incomplete.`));
+  }
+
+  // Always-on compact legend so a reader knows what the severities mean at a glance.
+  console.log('\n' + chalk.bold('Severity legend:'));
+  (['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Severity[]).forEach(sev => {
+    console.log(`   ${SEVERITY_COLORS[sev](`[${sev}]`)} ${chalk.gray(SEVERITY_EXPLANATIONS[sev].meaning)}`);
+  });
+  if (!opts.explain) {
+    console.log(chalk.gray('   (run with --explain for the full glossary: categories, scoring, and how DAT works)'));
+  }
+
+  if (opts.explain) {
+    console.log('\n' + chalk.bold.underline('📖 How DAT works'));
+    PIPELINE_OVERVIEW.forEach((step, i) => console.log(chalk.gray(`   ${i + 1}. ${step}`)));
+    console.log('\n' + chalk.bold.underline('🏷️  Finding categories'));
+    for (const [key, c] of Object.entries(CATEGORY_EXPLANATIONS)) {
+      console.log(`   ${chalk.bold(c.label)} ${chalk.gray(`(${key})`)}: ${chalk.gray(c.whyItMatters)}`);
+    }
   }
   console.log('');
 }

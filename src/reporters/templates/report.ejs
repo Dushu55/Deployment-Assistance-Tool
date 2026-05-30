@@ -4,130 +4,180 @@
     <meta charset="utf-8">
     <title>DAT Security Report</title>
     <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 0; }
-        .header { border-bottom: 2px solid #2C3E50; padding-bottom: 20px; margin-bottom: 30px; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 40px; }
+        .header { border-bottom: 2px solid #2C3E50; padding-bottom: 20px; margin-bottom: 24px; }
         .header h1 { color: #2C3E50; margin: 0; font-size: 28px; }
         .header p { color: #7F8C8D; margin: 5px 0 0 0; }
-        .kpi-container { display: flex; justify-content: space-between; margin-bottom: 30px; }
-        .kpi { text-align: center; padding: 20px; border-radius: 8px; background: #ECF0F1; width: 18%; }
+
+        .gate-banner { padding: 14px 18px; border-radius: 6px; margin-bottom: 24px; font-size: 16px; }
+        .gate-pass { background: #E8F8F5; border-left: 6px solid #27AE60; color: #1E8449; }
+        .gate-fail { background: #FDEDEC; border-left: 6px solid #E74C3C; color: #C0392B; }
+        .gate-banner .rationale { color: #555; font-size: 13px; margin-top: 6px; font-weight: normal; }
+
+        .kpi-container { display: flex; justify-content: space-between; margin-bottom: 16px; gap: 8px; }
+        .kpi { text-align: center; padding: 18px; border-radius: 8px; background: #ECF0F1; flex: 1; }
         .kpi h2 { margin: 0; font-size: 24px; color: #2C3E50; }
         .kpi p { margin: 5px 0 0 0; font-size: 12px; color: #7F8C8D; text-transform: uppercase; letter-spacing: 1px; }
         .kpi.score-green { background: #E8F8F5; } .kpi.score-green h2 { color: #27AE60; }
         .kpi.score-yellow { background: #FEF9E7; } .kpi.score-yellow h2 { color: #F1C40F; }
         .kpi.score-red { background: #FDEDEC; } .kpi.score-red h2 { color: #E74C3C; }
-        .chart-container { text-align: center; margin-bottom: 40px; }
+
+        .explain { background: #F8F9FB; border: 1px solid #E1E4E8; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; font-size: 13px; }
+        .explain h3 { margin: 0 0 8px 0; color: #2C3E50; font-size: 15px; }
+        .explain h4 { margin: 16px 0 6px 0; color: #2C3E50; font-size: 13px; }
+        .explain table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .explain td, .explain th { text-align: left; padding: 4px 8px; border-bottom: 1px solid #ECECEC; vertical-align: top; }
+        .explain .muted { color: #7F8C8D; }
+        .pill { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: bold; color: #fff; }
+        .pill.CRITICAL { background: #E74C3C; } .pill.HIGH { background: #E67E22; }
+        .pill.MEDIUM { background: #F1C40F; } .pill.LOW { background: #3498DB; } .pill.INFO { background: #95A5A6; }
+
+        .chart-container { text-align: center; margin: 16px 0 32px; }
         .chart-container img { max-width: 400px; }
-        
-        .section-title { background: #2C3E50; color: white; padding: 10px 15px; border-radius: 4px; font-size: 18px; margin-top: 40px; page-break-after: avoid; }
-        
+
+        .section-title { background: #2C3E50; color: white; padding: 10px 15px; border-radius: 4px; font-size: 18px; margin-top: 32px; page-break-after: avoid; }
+        .cat-note { color: #7F8C8D; font-size: 12px; margin: 6px 0 0; }
+
         .finding { border: 1px solid #BDC3C7; border-left: 5px solid #BDC3C7; border-radius: 4px; margin-bottom: 20px; padding: 15px; page-break-inside: avoid; }
         .finding.CRITICAL { border-left-color: #E74C3C; }
         .finding.HIGH { border-left-color: #E67E22; }
         .finding.MEDIUM { border-left-color: #F1C40F; }
         .finding.LOW { border-left-color: #3498DB; }
         .finding.INFO { border-left-color: #95A5A6; }
-        
         .finding-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ECF0F1; padding-bottom: 10px; margin-bottom: 10px; }
         .finding-id { font-weight: bold; color: #2C3E50; font-family: monospace; font-size: 14px; }
         .finding-meta { font-size: 12px; color: #7F8C8D; }
-        
         .badge { padding: 4px 8px; border-radius: 12px; color: white; font-size: 11px; font-weight: bold; }
-        .badge.CRITICAL { background: #E74C3C; }
-        .badge.HIGH { background: #E67E22; }
-        .badge.MEDIUM { background: #F1C40F; }
-        .badge.LOW { background: #3498DB; }
-        .badge.INFO { background: #95A5A6; }
+        .badge.CRITICAL { background: #E74C3C; } .badge.HIGH { background: #E67E22; }
+        .badge.MEDIUM { background: #F1C40F; } .badge.LOW { background: #3498DB; } .badge.INFO { background: #95A5A6; }
+        .why { color: #7F8C8D; font-size: 12px; font-style: italic; margin: 6px 0; }
 
         .ai-block { background: #282C34; color: #ABB2BF; padding: 15px; border-radius: 6px; font-family: 'Courier New', Courier, monospace; font-size: 13px; margin-top: 15px; white-space: pre-wrap; word-wrap: break-word; }
-        .ai-block .highlight { color: #E06C75; }
-        .ai-block .path { color: #98C379; }
-        .ai-block .remedy { color: #61AFEF; }
+        .ai-block .highlight { color: #E06C75; } .ai-block .path { color: #98C379; } .ai-block .remedy { color: #61AFEF; }
+        .coverage { background: #FEF9E7; border: 1px solid #F7E9A0; border-radius: 6px; padding: 12px 16px; font-size: 13px; }
     </style>
 </head>
 <body>
 
 <div class="header">
     <h1>Deployment Assist Tool (DAT)</h1>
-    <p>Automated DevSecOps Scan Report & AI Remediation Manifest</p>
+    <p>Automated DevSecOps Scan Report &amp; AI Remediation Manifest</p>
     <p style="font-size: 12px; margin-top: 10px;">Generated: <%= new Date(report.timestamp).toLocaleString() %></p>
 </div>
 
-<% 
-    const s = report.summary;
-    const score = calculateReadinessScore(s);
-    let scoreClass = score >= 80 ? 'score-green' : (score >= 50 ? 'score-yellow' : 'score-red');
-%>
+<% const s = report.summary; let scoreClass = score >= 80 ? 'score-green' : (score >= 50 ? 'score-yellow' : 'score-red'); %>
+
+<!-- Quality Gate banner: the deploy decision, in plain language -->
+<div class="gate-banner <%= gate.passed ? 'gate-pass' : 'gate-fail' %>">
+    <strong><%= gate.passed ? '✅ Quality Gate PASSED — deployment permitted' : '❌ Quality Gate FAILED — deployment blocked' %></strong>
+    <% if (typeof readinessLevel !== 'undefined' && readinessLevel) { %>
+        &nbsp;·&nbsp; Readiness: <%= explain.READINESS_LEVEL_EXPLANATIONS[readinessLevel].title %>
+    <% } %>
+    <div class="rationale"><%= gate.rationale %></div>
+</div>
 
 <div class="kpi-container">
-    <div class="kpi <%= scoreClass %>">
-        <h2><%= score %>/100</h2>
-        <p>Readiness Score</p>
-    </div>
-    <div class="kpi" style="border-bottom: 4px solid #E74C3C;">
-        <h2><%= s.critical %></h2>
-        <p>Critical</p>
-    </div>
-    <div class="kpi" style="border-bottom: 4px solid #E67E22;">
-        <h2><%= s.high %></h2>
-        <p>High</p>
-    </div>
-    <div class="kpi" style="border-bottom: 4px solid #F1C40F;">
-        <h2><%= s.medium %></h2>
-        <p>Medium</p>
-    </div>
-    <div class="kpi" style="border-bottom: 4px solid #3498DB;">
-        <h2><%= s.low %></h2>
-        <p>Low</p>
-    </div>
+    <div class="kpi <%= scoreClass %>"><h2><%= score %>/100</h2><p>Readiness Score</p></div>
+    <div class="kpi" style="border-bottom: 4px solid #E74C3C;"><h2><%= s.critical %></h2><p>Critical</p></div>
+    <div class="kpi" style="border-bottom: 4px solid #E67E22;"><h2><%= s.high %></h2><p>High</p></div>
+    <div class="kpi" style="border-bottom: 4px solid #F1C40F;"><h2><%= s.medium %></h2><p>Medium</p></div>
+    <div class="kpi" style="border-bottom: 4px solid #3498DB;"><h2><%= s.low %></h2><p>Low</p></div>
+</div>
+
+<!-- Dynamic score breakdown: HOW this number was derived -->
+<div class="explain">
+    <h3>How this score was calculated</h3>
+    <p class="muted"><strong><%= score %>/100</strong> — <%= scoreInfo.bandMeaning %> &nbsp;<span class="muted">(<%= scoreInfo.formula %>)</span></p>
+    <table>
+        <tr><th>Severity</th><th>Count</th><th>Weight</th><th>Penalty applied</th></tr>
+        <% scoreInfo.breakdown.forEach(function(r){ %>
+            <tr><td><span class="pill <%= r.severity %>"><%= r.severity %></span></td><td><%= r.count %></td><td><%= r.weight %></td><td>−<%= r.penalty %></td></tr>
+        <% }); %>
+        <tr><td colspan="3"><strong>Total penalty</strong></td><td><strong>−<%= scoreInfo.totalPenalty %></strong></td></tr>
+    </table>
 </div>
 
 <div class="chart-container">
-    <% 
-        const chartData = {
-            type: 'doughnut',
-            data: {
-                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
-                datasets: [{
-                    data: [s.critical, s.high, s.medium, s.low, s.info],
-                    backgroundColor: ['#E74C3C', '#E67E22', '#F1C40F', '#3498DB', '#95A5A6']
-                }]
-            },
-            options: { plugins: { datalabels: { color: '#fff' } } }
-        };
+    <%
+        const chartData = { type: 'doughnut', data: { labels: ['Critical','High','Medium','Low','Info'],
+            datasets: [{ data: [s.critical, s.high, s.medium, s.low, s.info], backgroundColor: ['#E74C3C','#E67E22','#F1C40F','#3498DB','#95A5A6'] }] },
+            options: { plugins: { datalabels: { color: '#fff' } } } };
         const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartData))}&w=400&h=250`;
     %>
     <img src="<%= chartUrl %>" alt="Vulnerability Distribution Chart" />
 </div>
 
-<div class="section-title">Detailed Findings & AI Remediation Data</div>
-<p style="color: #7F8C8D; font-size: 13px; margin-bottom: 30px;">This section is structured to provide explicit context to AI assistants (CodeX, Claude, Copilot) for automated remediation.</p>
+<!-- How to read this report: the glossary for stakeholders -->
+<div class="section-title">How to read this report</div>
+<div class="explain">
+    <h4>How DAT works</h4>
+    <ol class="muted" style="margin: 4px 0; padding-left: 20px;">
+        <% explain.PIPELINE_OVERVIEW.forEach(function(step){ %><li><%= step %></li><% }); %>
+    </ol>
+
+    <h4>The Quality Gate</h4>
+    <p class="muted"><%= explain.GATE_EXPLANATION %> &nbsp;This run blocks on: <strong><%= failOn.join(', ') %></strong>.</p>
+
+    <h4>What the severities mean</h4>
+    <table>
+        <% ['CRITICAL','HIGH','MEDIUM','LOW','INFO'].forEach(function(sev){ %>
+            <tr><td><span class="pill <%= sev %>"><%= sev %></span></td><td><%= explain.SEVERITY_EXPLANATIONS[sev].meaning %></td><td class="muted"><%= explain.SEVERITY_EXPLANATIONS[sev].action %></td></tr>
+        <% }); %>
+    </table>
+
+    <h4>What the finding categories mean</h4>
+    <table>
+        <% Object.keys(explain.CATEGORY_EXPLANATIONS).forEach(function(key){ var c = explain.CATEGORY_EXPLANATIONS[key]; %>
+            <tr><td><strong><%= c.label %></strong></td><td><%= c.whatItMeans %></td><td class="muted"><%= c.whyItMatters %></td></tr>
+        <% }); %>
+    </table>
+
+    <h4>The readiness score</h4>
+    <p class="muted">Range <%= explain.SCORE_MODEL.range %>. Bands:
+        <% explain.SCORE_MODEL.bands.forEach(function(b){ %> <strong><%= b.range %></strong> (<%= b.band %>) — <%= b.meaning %>; <% }); %>
+        <%= explain.SCORE_MODEL.notes %></p>
+</div>
+
+<!-- Coverage gaps: checks that did not run -->
+<% var skipped = report.results.filter(function(r){ return r.skipped; }); %>
+<% if (skipped.length > 0) { %>
+    <div class="section-title">Coverage gaps (checks that did not run)</div>
+    <div class="coverage">
+        <p class="muted">These scanners were skipped, so the related risk areas are <strong>unverified</strong> (not necessarily safe):</p>
+        <ul>
+            <% skipped.forEach(function(r){ %><li><strong><%= r.scannerName %></strong>: <%= r.skipReason || 'unavailable' %></li><% }); %>
+        </ul>
+    </div>
+<% } %>
+
+<div class="section-title">Detailed Findings &amp; AI Remediation Data</div>
+<p style="color: #7F8C8D; font-size: 13px; margin-bottom: 24px;">Each finding shows its category and why it matters, plus a machine-readable remediation block for AI assistants (Claude Code, etc.).</p>
 
 <% report.results.forEach(function(scanner) { %>
-    <% if (scanner.issues.length > 0) { %>
+    <% if (scanner.issues && scanner.issues.length > 0) { %>
         <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;"><%= scanner.scannerName %> Findings</h3>
-        
         <% scanner.issues.forEach(function(issue) { %>
+            <% var cat = issue.category && explain.CATEGORY_EXPLANATIONS[issue.category] ? explain.CATEGORY_EXPLANATIONS[issue.category] : null; %>
             <div class="finding <%= issue.severity %>">
                 <div class="finding-header">
                     <span class="badge <%= issue.severity %>"><%= issue.severity %></span>
                     <span class="finding-id"><%= issue.id %></span>
-                    <span class="finding-meta"><%= issue.source %></span>
+                    <span class="finding-meta"><%= cat ? cat.label + ' · ' : '' %><%= issue.source %></span>
                 </div>
-                
+                <% if (cat) { %><p class="why">Why it matters: <%= cat.whyItMatters %></p><% } %>
                 <p><strong>Description:</strong> <%= issue.message %></p>
-                
                 <% if (issue.file) { %>
                     <p><strong>Location:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 3px;"><%= issue.file %><%= issue.line ? `:${issue.line}` : '' %></span></p>
                 <% } %>
-
                 <div class="ai-block">
 // AI REMEDIATION MANIFEST
 Target_File: <span class="path"><%= issue.file || 'Global/Dependency' %></span>
 Target_Line: <span class="path"><%= issue.line || 'N/A' %></span>
 Issue_Type:  <span class="highlight"><%= issue.id %></span>
 Severity:    <span class="highlight"><%= issue.severity %></span>
+Category:    <span class="highlight"><%= issue.category || 'n/a' %></span>
 
-Instruction: Fix the vulnerability described below.
+Instruction: Fix the issue described below.
 "<span style="color: #fff"><%= issue.message %></span>"
 <% if (issue.remediation) { %>
 Suggested_Remedy: <span class="remedy"><%= issue.remediation %></span>

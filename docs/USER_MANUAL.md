@@ -113,7 +113,9 @@ npm run build
 | `--auto-fix` | off | Apply AST auto-fixes to the working tree (verified by test suite, reverted on failure). |
 | `--sarif <path>` | `results/dat-report.sarif` | SARIF output (GitHub Security tab). |
 | `--csv <path>` | `results/dat-report.csv` | CSV findings export. |
-| `--pdf <path>` | `results/dat-report.pdf` | Branded PDF report. |
+| `--pdf <path>` | `results/dat-report.pdf` | Branded PDF report (self-explaining). |
+| `--html <path>` | `results/dat-report.html` | Shareable, self-contained HTML report (self-explaining). |
+| `--explain` | off | Print the full glossary + score breakdown + gate rationale to the console. |
 | `--fix-manifest <path>` | `results/dat-fix-manifest.json` | Machine-consumable findings for Claude Code / coding agents. |
 | `--component-model <path>` | `results/dat-component-model.json` | Emits the application component graph. |
 | `--push-dojo` | off | Push SARIF to DefectDojo (requires `DEFECTDOJO_URL` + `DEFECTDOJO_API_KEY`). |
@@ -447,3 +449,45 @@ Key properties:
 | 80–100 | Healthy — minor issues only |
 | 50–79 | Caution — address before next deploy |
 | 0–49 | Blocked — critical/high findings present |
+
+---
+
+## 13. Reading & Explaining Reports (for stakeholders)
+
+Every report is **self-explaining** — a non-technical reader can understand what the numbers mean
+without prior context. The explanations come from one source of truth (`src/explain.ts`), so the
+wording is identical across console, HTML, PDF, and the fix-manifest.
+
+**Shareable HTML report** (recommended for stakeholders):
+```bash
+node dist/index.js scan --html results/dat-report.html
+```
+Open it in a browser or attach it to an email / CI artifact. It includes:
+* A **Quality Gate banner** (PASSED/FAILED) with the plain-English reason and the readiness level.
+* A **"How this score was calculated"** breakdown — the exact penalty each severity contributed.
+* A **"How to read this report"** glossary — how DAT works, what the gate means, what each severity
+  and finding **category** means, and the score bands.
+* A **Coverage gaps** section — checks that did not run (so "unverified" is never mistaken for "safe").
+* Per-finding **category + "why it matters"**, plus a machine-readable remediation block.
+
+**Console:** a compact severity legend always prints; add `--explain` for the full glossary, the
+score breakdown, and the gate rationale:
+```bash
+node dist/index.js scan --explain
+```
+
+**Fix-manifest:** carries a top-level `glossary` block (how-it-works, score model + this report's
+breakdown, severities, categories, gate) so coding agents and JSON consumers interpret every value
+without external docs.
+
+**What the categories mean** (shown inline on findings):
+
+| Category | Why it matters |
+|---|---|
+| security | Directly exposes the app or its data to attack. |
+| defect | Broken logic reaches users. |
+| robustness | App fails unpredictably under load, bad input, or upstream outages. |
+| coherence | Components disagree → runtime failures unit tests miss. |
+| fail-safe | When something goes wrong, the app does the unsafe thing. |
+| best-practice | Drift that makes the system harder to secure/maintain. |
+| coverage | A check could not run — the area is unverified, not proven safe. |

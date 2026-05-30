@@ -90,3 +90,49 @@ export function calculateReadinessScore(summary: {
     SEVERITY_WEIGHTS.low * damp(summary.low);
   return Math.max(0, Math.min(100, Math.round(100 - penalty)));
 }
+
+export interface ScoreBand { band: 'green' | 'yellow' | 'red'; meaning: string; }
+export interface ScoreBreakdownRow { severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; count: number; weight: number; penalty: number; }
+export interface ScoreExplanation {
+  score: number;
+  band: ScoreBand['band'];
+  bandMeaning: string;
+  totalPenalty: number;
+  breakdown: ScoreBreakdownRow[];
+  formula: string;
+}
+
+export function scoreBand(score: number): ScoreBand {
+  if (score >= 80) return { band: 'green', meaning: 'Healthy — minor issues only.' };
+  if (score >= 50) return { band: 'yellow', meaning: 'Caution — address before the next deploy.' };
+  return { band: 'red', meaning: 'Blocked — critical/high findings present.' };
+}
+
+/**
+ * Explains HOW the readiness score was derived: the per-severity dampened penalty that each
+ * severity contributed, the total, and the resulting band. Single source of truth alongside the
+ * formula, so every report shows the same math.
+ */
+export function explainReadinessScore(summary: {
+  critical: number; high: number; medium: number; low: number; info?: number;
+}): ScoreExplanation {
+  const damp = (n: number) => Math.log2(1 + Math.max(0, n));
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+  const rows: ScoreBreakdownRow[] = [
+    { severity: 'CRITICAL', count: summary.critical, weight: SEVERITY_WEIGHTS.critical, penalty: round1(SEVERITY_WEIGHTS.critical * damp(summary.critical)) },
+    { severity: 'HIGH', count: summary.high, weight: SEVERITY_WEIGHTS.high, penalty: round1(SEVERITY_WEIGHTS.high * damp(summary.high)) },
+    { severity: 'MEDIUM', count: summary.medium, weight: SEVERITY_WEIGHTS.medium, penalty: round1(SEVERITY_WEIGHTS.medium * damp(summary.medium)) },
+    { severity: 'LOW', count: summary.low, weight: SEVERITY_WEIGHTS.low, penalty: round1(SEVERITY_WEIGHTS.low * damp(summary.low)) }
+  ];
+  const totalPenalty = round1(rows.reduce((a, r) => a + r.penalty, 0));
+  const score = calculateReadinessScore(summary);
+  const { band, meaning } = scoreBand(score);
+  return {
+    score,
+    band,
+    bandMeaning: meaning,
+    totalPenalty,
+    breakdown: rows,
+    formula: '100 − Σ ( weight × log₂(1 + count) ) per severity, clamped to 0–100'
+  };
+}
