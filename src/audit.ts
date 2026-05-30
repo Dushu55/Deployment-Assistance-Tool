@@ -2,6 +2,31 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { logger } from './logger.js';
+import { ScannerResult } from './types.js';
+
+export interface ScannerMetrics {
+  scannersRun: number;
+  scannersFailed: number;
+  scannersSkipped: number;
+  scanners: { name: string; durationMs: number; success: boolean; skipped: boolean; issueCount: number }[];
+}
+
+/** Summarize per-scanner outcomes for the structured audit event (data already on each result). */
+export function summarizeScannerMetrics(results: ScannerResult[]): ScannerMetrics {
+  const scanners = results.map(r => ({
+    name: r.scannerName,
+    durationMs: r.durationMs,
+    success: r.success,
+    skipped: r.skipped === true,
+    issueCount: r.issues.length
+  }));
+  return {
+    scannersRun: scanners.filter(s => !s.skipped).length,
+    scannersFailed: scanners.filter(s => !s.success).length,
+    scannersSkipped: scanners.filter(s => s.skipped).length,
+    scanners
+  };
+}
 
 export interface AuditContext {
   actor: string;           // Username or system invoking the scan
@@ -54,13 +79,19 @@ export function emitAuditStart(context: AuditContext, configPath: string): strin
 /**
  * Emits a structured AUDIT_END event detailing the exact outcomes.
  */
-export function emitAuditEnd(executionId: string, success: boolean, score: number, issuesFound: number) {
+export function emitAuditEnd(executionId: string, success: boolean, score: number, issuesFound: number, metrics?: ScannerMetrics) {
   logger.info('AUDIT_EVENT: PIPELINE_END', {
     auditEvent: 'PIPELINE_END',
     executionId,
     timestamp: new Date().toISOString(),
     status: success ? 'PASSED' : 'FAILED',
     deploymentReadinessScore: score,
-    totalIssuesFound: issuesFound
+    totalIssuesFound: issuesFound,
+    ...(metrics ? {
+      scannersRun: metrics.scannersRun,
+      scannersFailed: metrics.scannersFailed,
+      scannersSkipped: metrics.scannersSkipped,
+      scanners: metrics.scanners
+    } : {})
   });
 }

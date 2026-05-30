@@ -26,7 +26,7 @@ import { activeProcesses } from './runner.js';
 import { AstGrepAutoFixer } from './autofix/index.js';
 import { logger } from './logger.js';
 import { EnvironmentDetector } from './env.js';
-import { emitAuditStart, emitAuditEnd, AuditContext } from './audit.js';
+import { emitAuditStart, emitAuditEnd, summarizeScannerMetrics, AuditContext } from './audit.js';
 import { missingBinaries, isBinaryAvailable } from './utils/preflight.js';
 import { GcpCloudRunDeployer } from './deployers/gcp.js';
 import { EphemeralDeployment } from './deployers/index.js';
@@ -142,37 +142,50 @@ export interface DatRunOptions {
   auditContext?: AuditContext;
 }
 
-// Concurrency-limited runner with robust error catching
+/**
+ * Run a single scanner with a hard wall-clock bound. A scanner that hangs *outside* runCommand
+ * (e.g. an infinite loop in parsing, or an SDK call with no timeout) would otherwise stall the whole
+ * pipeline; here it resolves to a clear failed result and the run continues. Always resolves.
+ */
+export function runScannerWithTimeout(scanner: any, context: any, timeoutMs: number): Promise<ScannerResult> {
+  return new Promise<ScannerResult>((resolve) => {
+    let settled = false;
+    const finish = (res: ScannerResult) => { if (!settled) { settled = true; clearTimeout(timer); resolve(res); } };
+    const timer = setTimeout(() => finish({
+      scannerName: scanner.name, success: false, durationMs: timeoutMs, issues: [],
+      error: `Scanner timed out after ${timeoutMs}ms (wall-clock limit). Increase runner.scannerTimeoutMs if legitimate.`
+    }), timeoutMs);
+    if (typeof (timer as any).unref === 'function') (timer as any).unref();
+
+    Promise.resolve()
+      .then(() => scanner.run(context))
+      .then((res: ScannerResult) => finish(res))
+      .catch((err: any) => finish({
+        scannerName: scanner.name, success: false, durationMs: 0, issues: [], error: (err as Error).message
+      }));
+  });
+}
+
+// Concurrency-limited runner with per-scanner wall-clock timeout + robust error catching.
 async function runWithConcurrencyLimit(
   scanners: any[],
   context: any,
-  limit: number = 4
+  limit: number = 4,
+  scannerTimeoutMs: number = 600000
 ): Promise<ScannerResult[]> {
   const results: ScannerResult[] = [];
   const queue = [...scanners];
-  
+
   async function worker() {
     while (queue.length > 0) {
       const scanner = queue.shift();
       if (!scanner) break;
-      
       console.log(chalk.cyan(`➜ Running ${scanner.name}...`));
-      try {
-        const res = await scanner.run(context);
-        results.push(res);
-      } catch (err) {
-        results.push({
-          scannerName: scanner.name,
-          success: false,
-          durationMs: 0,
-          issues: [],
-          error: (err as Error).message
-        });
-      }
+      results.push(await runScannerWithTimeout(scanner, context, scannerTimeoutMs));
     }
   }
 
-  const workers = Array.from({ length: Math.min(limit, scanners.length) }, worker);
+  const workers = Array.from({ length: Math.min(Math.max(1, limit), scanners.length) }, worker);
   await Promise.all(workers);
   return results;
 }
@@ -366,8 +379,10 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     }
   }
 
-  console.log(chalk.gray('\nExecuting scanners with a concurrency limit of 4...'));
-  const runResults = await runWithConcurrencyLimit(runnableScanners, { config, url: options.url, authToken: options.authToken, detectedLanguages }, 4);
+  const maxConcurrency = config.runner?.maxConcurrency ?? 4;
+  const scannerTimeoutMs = config.runner?.scannerTimeoutMs ?? 600000;
+  console.log(chalk.gray(`\nExecuting scanners (concurrency ${maxConcurrency}, per-scanner timeout ${Math.round(scannerTimeoutMs / 1000)}s)...`));
+  const runResults = await runWithConcurrencyLimit(runnableScanners, { config, url: options.url, authToken: options.authToken, detectedLanguages }, maxConcurrency, scannerTimeoutMs);
   const results = [...skippedResults, ...runResults];
 
   // 5.5 Trigger AST Auto-Fixer ONLY when explicitly enabled.
@@ -571,7 +586,7 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     console.log(chalk.gray(`🤖 Fix manifest saved to ${options.fixManifest} (consumable by Claude Code)`));
   }
 
-  emitAuditEnd(executionId, !failedGate, score, totalIssuesFound);
+  emitAuditEnd(executionId, !failedGate, score, totalIssuesFound, summarizeScannerMetrics(deduplicatedResults));
 
   if (options.throwOnFailure && failedGate) {
     throw new Error('Quality Gate Failed');
