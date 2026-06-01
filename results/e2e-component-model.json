@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-05-29T23:07:31.544Z",
+  "generatedAt": "2026-06-01T16:42:59.822Z",
   "ecosystem": {
     "frontend": [
       "react"
@@ -110,7 +110,23 @@
       }
     },
     {
-      "id": "ApiCall:src/reporters/defectdojo.ts:23:6",
+      "id": "ApiCall:src/evaluators/component/evaluator.test.ts:101:6",
+      "kind": "ApiCall",
+      "label": "POST /api/transfer",
+      "location": {
+        "file": "src/evaluators/component/evaluator.test.ts",
+        "line": 101
+      },
+      "attributes": {
+        "method": "POST",
+        "url": "/api/transfer",
+        "hasErrorHandling": false,
+        "hasTimeout": false,
+        "hasAuthHeader": false
+      }
+    },
+    {
+      "id": "ApiCall:src/reporters/defectdojo.ts:23:7",
       "kind": "ApiCall",
       "label": "POST ${url}/api/v2/import-scan/",
       "location": {
@@ -201,7 +217,22 @@
       }
     },
     {
-      "id": "ApiEndpoint:testing_data/index.js:6:5",
+      "id": "ApiEndpoint:src/evaluators/component/evaluator.test.ts:99:5",
+      "kind": "ApiEndpoint",
+      "label": "POST /api/transfer",
+      "location": {
+        "file": "src/evaluators/component/evaluator.test.ts",
+        "line": 99
+      },
+      "attributes": {
+        "method": "POST",
+        "path": "/api/transfer",
+        "hasAuthMiddleware": false,
+        "isStateChanging": true
+      }
+    },
+    {
+      "id": "ApiEndpoint:testing_data/index.js:6:6",
       "kind": "ApiEndpoint",
       "label": "GET /hash",
       "location": {
@@ -216,7 +247,7 @@
       }
     },
     {
-      "id": "ApiEndpoint:testing_data/index.js:12:6",
+      "id": "ApiEndpoint:testing_data/index.js:12:7",
       "kind": "ApiEndpoint",
       "label": "GET /execute",
       "location": {
@@ -267,19 +298,24 @@
       "from": "ApiCall:src/components/extractors/react.test.ts:27:2",
       "to": "ApiEndpoint:src/components/extractors/api.test.ts:28:1",
       "kind": "calls"
+    },
+    {
+      "from": "ApiCall:src/evaluators/component/evaluator.test.ts:101:6",
+      "to": "ApiEndpoint:src/evaluators/component/evaluator.test.ts:99:5",
+      "kind": "calls"
     }
   ],
   "coverage": [
     {
       "extractor": "react",
-      "filesScanned": 92,
-      "nodesFound": 7,
-      "note": "Heuristic parsing (V1): 0 JSX/TSX file(s) scanned for UI elements, 92 JS/TS file(s) for fetch/axios calls. Dynamic props and templated URLs captured best-effort; AST parsing planned."
+      "filesScanned": 120,
+      "nodesFound": 8,
+      "note": "Heuristic parsing (V1): 0 JSX/TSX file(s) scanned for UI elements, 120 JS/TS file(s) for fetch/axios calls. Dynamic props and templated URLs captured best-effort; AST parsing planned."
     },
     {
       "extractor": "api",
-      "filesScanned": 92,
-      "nodesFound": 7,
+      "filesScanned": 120,
+      "nodesFound": 8,
       "note": "Heuristic route detection (V1): auth-middleware inferred by identifier hints; dynamic route registration not traced."
     },
     {

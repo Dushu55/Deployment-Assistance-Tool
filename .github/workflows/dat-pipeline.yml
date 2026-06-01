@@ -103,9 +103,17 @@ jobs:
 
       # --- Supply-chain provenance of DAT itself (best-effort) ---
       - name: Generate DAT's own SBOM (CycloneDX)
-        if: always()
+        if: ${{ always() }}
         continue-on-error: true
-        run: command -v trivy >/dev/null && trivy fs --format cyclonedx --output dat-sbom.cdx.json . || echo "trivy unavailable; skipping SBOM"
+        # Skip vendored/build dirs so the SBOM reflects DAT's declared deps and completes reliably.
+        run: |
+          if command -v trivy >/dev/null; then
+            trivy fs --quiet --format cyclonedx \
+              --skip-dirs node_modules --skip-dirs dist --skip-dirs testing_data \
+              --output dat-sbom.cdx.json .
+          else
+            echo "trivy unavailable; skipping SBOM"
+          fi
 
       - name: Upload DAT SBOM artifact
         if: ${{ always() && hashFiles('dat-sbom.cdx.json') != '' }}
