@@ -1,8 +1,14 @@
+import path from 'path';
 import winston from 'winston';
 import 'winston-daily-rotate-file';
 import { redactString, redactDeep, registerEnvSecrets } from './utils/redact.js';
 
 const isCi = process.env.CI === 'true';
+
+// Anchor the audit log dir to an ABSOLUTE path captured at module load (before any --path/--repo
+// retargeting calls process.chdir). A relative 'logs' would otherwise resolve against the scanned
+// app's directory mid-run and crash (ENOENT) or scatter logs into every target.
+const LOG_DIR = path.resolve(process.cwd(), 'logs');
 
 // Register literal env-var secret values so they're scrubbed wherever they appear.
 registerEnvSecrets();
@@ -38,7 +44,7 @@ export const logger = winston.createLogger({
     new winston.transports.Console(),
     // Keep a persistent daily rotating log on the local disk
     new winston.transports.DailyRotateFile({
-      dirname: 'logs',
+      dirname: LOG_DIR,
       filename: 'dat-audit-%DATE%.log',
       datePattern: 'YYYY-MM-DD',
       zippedArchive: true,

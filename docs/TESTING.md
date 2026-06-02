@@ -46,11 +46,14 @@ fixtures, so the quality gate is *expected* to fail — the test is about artifa
 
 ## 4. Run DAT against your own application
 
-From your app's repo root (or point `--config` / paths at it):
+Point DAT at your app with `--path <dir>` (or `--repo <git-url>` to shallow-clone and scan), or
+`cd` into the app first — DAT scans the resolved working directory. See
+[APP_READINESS_REQUIREMENTS.md](APP_READINESS_REQUIREMENTS.md) for what an app needs to get a
+meaningful scan.
 
 ```bash
 # 1. (Recommended) Check readiness first — what's configured vs. missing, POC→enterprise.
-node /path/to/dat/dist/index.js preflight
+node /path/to/dat/dist/index.js preflight --path /path/to/your/app
 
 # 2. Scan, emitting the stakeholder HTML report + the Claude-Code fix manifest.
 node /path/to/dat/dist/index.js scan \

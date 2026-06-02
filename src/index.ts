@@ -9,9 +9,13 @@ import { Command } from 'commander';
 import { registerEnvSecrets } from './utils/redact.js';
 registerEnvSecrets();
 import chalk from 'chalk';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFileSync } from 'child_process';
 import { runDatPipeline } from './orchestrator.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
-import { EnvironmentDetector } from './env.js';
+import { EnvironmentDetector, databaseSummaryLine } from './env.js';
 import { isProfileName, PROFILE_NAMES } from './profiles.js';
 import { loadConfig } from './config.js';
 import { checkReadiness, printReadiness } from './readiness.js';
@@ -21,7 +25,44 @@ const program = new Command();
 program
   .name('dat')
   .description('Deployment Assist Tool - Quality and Security Scanner')
-  .version('0.1.0');
+  .version('0.1.0')
+  // Global targeting: by default DAT scans the current directory. These let you point it elsewhere.
+  // Output paths (results/…) are written relative to the resolved target directory.
+  .option('--path <dir>', 'Scan this directory instead of the current one (your application)')
+  .option('--repo <url>', 'Shallow-clone this git repo to a temp dir and scan it (removed on exit)');
+
+// Retarget the working directory BEFORE any command action runs. Config loading, language/DB
+// detection, the component builder, and readiness all key off process.cwd(), so a single chdir
+// cleanly retargets the whole pipeline.
+program.hook('preAction', (thisCommand) => {
+  const opts = thisCommand.opts();
+  try {
+    let targetDir: string | undefined;
+    if (opts.repo) {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dat-repo-'));
+      console.log(chalk.gray(`⬇️  Cloning ${opts.repo} (shallow)…`));
+      // execFileSync (no shell) avoids injection from the URL argument.
+      execFileSync('git', ['clone', '--depth', '1', opts.repo, tmp], { stdio: 'inherit' });
+      process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* best effort */ } });
+      targetDir = tmp;
+    } else if (opts.path) {
+      targetDir = path.resolve(opts.path);
+      if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
+        throw new Error(`--path "${opts.path}" is not an existing directory.`);
+      }
+    }
+    if (targetDir) {
+      process.chdir(targetDir);
+      // Pick up the TARGET app's .env (the import-time load ran against the original cwd).
+      try { (process as any).loadEnvFile?.(); } catch { /* no .env — fine */ }
+      registerEnvSecrets();
+      console.log(chalk.gray(`📂 Target application: ${targetDir}`));
+    }
+  } catch (error: any) {
+    console.log(chalk.red.bold('\n❌ Could not prepare target directory:'), error.message);
+    process.exit(1);
+  }
+});
 
 program
   .command('scan')
@@ -95,6 +136,8 @@ program
         profile: options.profile
       });
       printReadiness(report);
+      const dbLine = databaseSummaryLine(new EnvironmentDetector().detectDatabases());
+      if (dbLine) console.log(chalk.gray(`🗄️  Detected database(s): ${dbLine}\n`));
       process.exit(options.strict && report.requiredMissing > 0 ? 1 : 0);
     } catch (error: any) {
       console.log(chalk.red.bold('\n❌ Preflight failed:'), error.message);

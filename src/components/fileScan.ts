@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const DEFAULT_EXCLUDES = ['node_modules', 'dist', 'build', 'coverage', '.git', 'venv', '.next', 'out', 'target', '__pycache__'];
+const DEFAULT_EXCLUDES = ['node_modules', 'dist', 'build', 'coverage', '.git', 'venv', '.next', 'out', 'target', '__pycache__', '.gemini', '.opencode', '.swc'];
 
 /** Recursively collect files matching any of `includeExts`, skipping common build/vendor dirs. */
 export function findFiles(root: string, includeExts: string[], excludeDirs: string[] = DEFAULT_EXCLUDES): string[] {

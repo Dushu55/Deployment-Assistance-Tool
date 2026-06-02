@@ -46,6 +46,7 @@ Exit code `0` = quality gate passed, `1` = failed. Pick breadth with `--profile 
 | Doc | What |
 |---|---|
 | [docs/USER_MANUAL.md](docs/USER_MANUAL.md) | Full CLI reference, profiles, preflight, reports, hardening |
+| [docs/APP_READINESS_REQUIREMENTS.md](docs/APP_READINESS_REQUIREMENTS.md) | What your app needs to get a meaningful scan, by tier |
 | [docs/TESTING.md](docs/TESTING.md) | How to install, test, and run DAT against your app |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture |
 | [docs/COMPONENT_MODEL.md](docs/COMPONENT_MODEL.md) | The component graph + evaluators |

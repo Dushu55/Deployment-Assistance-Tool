@@ -36,6 +36,12 @@
 #   # location: us-central1
 #   # model: gemini-2.5-flash
 # -------------------------------------------------------------------------------------
+#
+# ⚠️ NOTE for real projects: the `targetDir` values below (testing_data/app, testing_data/llm_app)
+# point at DAT's OWN test fixtures — they exist so DAT can dogfood-scan itself. When you copy this
+# file into your application, OMIT every `targetDir` (and `hadolint.target`): unset, each scanner
+# defaults to your workspace root, which is what you want. Only set them to scan a sub-directory.
+# -------------------------------------------------------------------------------------
 
 scanners:
   semgrep:
