@@ -76,6 +76,8 @@ export interface DatConfig {
   };
   failOn: Severity[]; // e.g., ['CRITICAL', 'HIGH']
   profile?: ProfileName;                  // one-word scanner selection; overrides per-scanner enabled flags
+  exclude?: string[];                     // path globs excluded from ALL scanners + the component walk
+                                          // (dir prefix e.g. "testing_data", or "**/*.test.ts", "*.min.js")
   autoDetect?: boolean;                   // prune scanners whose advisory inputs are absent (default true)
   preflight?: { required?: InputCategory[]; highlyAdvised?: InputCategory[] }; // override tier membership (required == critical)
   componentEval?: {

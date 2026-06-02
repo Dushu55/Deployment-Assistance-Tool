@@ -26,7 +26,9 @@ export async function pushToDefectDojo(sarifPath: string, url: string, apiKey: s
         'Authorization': `Token ${apiKey}`,
         'Accept': 'application/json'
       },
-      body: formData as any
+      body: formData as any,
+      // Fail fast instead of hanging indefinitely if DefectDojo is unreachable/slow.
+      signal: AbortSignal.timeout(15000)
     });
 
     if (!response.ok) {

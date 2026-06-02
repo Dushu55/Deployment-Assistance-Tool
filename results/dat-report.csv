@@ -1,0 +1,11 @@
+Scanner,ID,Severity,Message,File,Line,Remediation
+Dockle,DOCKLE-NO-IMAGE,INFO,Image 'project-image:latest' not found locally. Skipping Dockle scan.,,,
+OSV-Scanner,GHSA-4r6h-8v6p-xvw6,HIGH,Package xlsx@0.18.5 is vulnerable: Prototype Pollution in sheetJS,/Users/heisenberg/Projects/deployment_assist_tool/package-lock.json,,
+OSV-Scanner,GHSA-5pgg-2g8v-p4x9,HIGH,Package xlsx@0.18.5 is vulnerable: SheetJS Regular Expression Denial of Service (ReDoS),/Users/heisenberg/Projects/deployment_assist_tool/package-lock.json,,
+OWASP ZAP,DAST-COVERAGE-GAP,INFO,"No target URL was available for DAST scanning, so dynamic vulnerabilities (XSS, CSRF, SQLi, broken authorization) were NOT tested. Provide --url <target> (or ensure the ephemeral deployment succeeds) to enable active scanning.",,,
+k6 Load Test,LOAD-COVERAGE-GAP,INFO,"No target URL was available for load testing, so performance and robustness under load were NOT measured. Provide --url to enable.",,,
+Garak (LLM DAST),NO-URL,INFO,No target URL provided for LLM DAST scanning. Use --url to enable.,,,
+Trivy (FS),CVE-2023-30533,HIGH,xlsx (0.18.5) is vulnerable.,package-lock.json,,Update to 0.19.3
+Trivy (FS),CVE-2024-22363,HIGH,xlsx (0.18.5) is vulnerable.,package-lock.json,,Update to 0.20.2
+Logic Tests,LOGIC-TESTS-PASSED,INFO,Logical test suite passed (command: `npm test`).,,,
+Component Evaluator,COMP-APICALL-NO-ERROR-HANDLING,MEDIUM,State-changing API call POST ${url}/api/v2/import-scan/ has no error handling — a failed request fails silently or crashes the UI.,src/reporters/defectdojo.ts,23,Wrap the call in try/catch (or add .catch) and surface the failure to the user; never assume a mutating request succeeds.

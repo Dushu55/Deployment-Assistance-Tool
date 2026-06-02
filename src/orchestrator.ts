@@ -21,7 +21,7 @@ import { PROFILES } from './profiles.js';
 import { isNotApplicable, DEFAULT_CRITICAL, DEFAULT_HIGHLY_ADVISED } from './inputs.js';
 import { checkReadiness, printReadiness } from './readiness.js';
 import { ALL_SCANNERS } from './scanners/index.js';
-import { calculateReadinessScore, deduplicateResults } from './utils.js';
+import { calculateReadinessScore, deduplicateResults, resolveExcludes, applyExcludes } from './utils.js';
 import { activeProcesses } from './runner.js';
 import { AstGrepAutoFixer } from './autofix/index.js';
 import { logger } from './logger.js';
@@ -456,8 +456,10 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     }
   }
 
-  // 6. Aggregate and Deduplicate Results (global fingerprint dedup across all scanners)
-  const deduplicatedResults = deduplicateResults(results);
+  // 6. Apply config `exclude` path globs uniformly (drops findings under excluded paths from
+  // every scanner + the component evaluator in one place), then dedup across all scanners.
+  const excludes = resolveExcludes(config);
+  const deduplicatedResults = deduplicateResults(applyExcludes(results, excludes));
 
   const report: AggregatedReport = {
     timestamp: new Date().toISOString(),

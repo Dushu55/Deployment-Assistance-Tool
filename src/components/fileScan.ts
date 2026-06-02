@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-const DEFAULT_EXCLUDES = ['node_modules', 'dist', 'build', 'coverage', '.git', 'venv', '.next', 'out', 'target', '__pycache__', '.gemini', '.opencode', '.swc', 'testing_data'];
+// Universal build/vendor/tooling dirs that are never first-party app code. Project-specific
+// excludes (e.g. testing_data fixtures) belong in `.dat.config.yaml` `exclude:`, not here.
+const DEFAULT_EXCLUDES = ['node_modules', 'dist', 'build', 'coverage', '.git', 'venv', '.next', 'out', 'target', '__pycache__', '.gemini', '.opencode', '.swc'];
 
 // Test/spec files aren't runtime components — extracting "endpoints"/"inputs" from them only yields
 // false positives (e.g. a mock POST /api/login in a unit test). Skip them in the component walk.

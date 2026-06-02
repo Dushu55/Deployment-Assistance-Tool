@@ -1,4 +1,43 @@
-import { Severity, ScannerResult } from './types.js';
+import { Severity, ScannerResult, DatConfig } from './types.js';
+
+/**
+ * Path-glob exclusion shared by every scanner + the component walk. Supports:
+ *   - directory/path prefixes:  "testing_data", "scripts", "src/components/extractors"
+ *   - suffix globs:             "*.min.js", "**\/*.test.ts"  (matches the literal after the last *)
+ * Leading "./" or "/" on either side is normalised so Checkov's "/testing_data/..." and a plain
+ * "testing_data/..." both match. A bare "*" never matches (guards against excluding everything).
+ */
+export function matchesExclude(file: string | undefined, patterns: string[]): boolean {
+  if (!file || !patterns || patterns.length === 0) return false;
+  // Scanners report paths in mixed forms — relative ("scripts/x.js"), workspace-rooted
+  // ("/testing_data/x.tf"), and absolute ("/Users/.../testing_data/x"). Match a pattern as a
+  // path-segment sequence appearing anywhere, so all three forms resolve identically.
+  const f = file.replace(/\\/g, '/').replace(/^\.\//, '');
+  const rel = f.replace(/^\/+/, '');
+  return patterns.some(raw => {
+    const pat = raw.replace(/\\/g, '/').replace(/^[./]+/, '').replace(/\/+$/, '');
+    if (!pat) return false;
+    if (pat.includes('*')) {
+      const suffix = pat.slice(pat.lastIndexOf('*') + 1);
+      return suffix.length > 0 && f.endsWith(suffix);
+    }
+    return rel === pat || rel.startsWith(pat + '/') || f.includes('/' + pat + '/') || f.endsWith('/' + pat);
+  });
+}
+
+/** The effective exclude globs for a run (empty when unset → no filtering, behaviour unchanged). */
+export function resolveExcludes(config: Pick<DatConfig, 'exclude'>): string[] {
+  return config.exclude ?? [];
+}
+
+/** Drop issues whose `file` matches an exclude glob, across all scanner results (new objects). */
+export function applyExcludes(results: ScannerResult[], patterns: string[]): ScannerResult[] {
+  if (patterns.length === 0) return results;
+  return results.map(res => ({
+    ...res,
+    issues: res.issues.filter(issue => !matchesExclude(issue.file, patterns))
+  }));
+}
 
 /**
  * Maps varying severity strings from different scanner tools to the unified Severity type.

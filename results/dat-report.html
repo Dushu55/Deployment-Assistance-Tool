@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>DAT Security Report</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 40px; }
+        .header { border-bottom: 2px solid #2C3E50; padding-bottom: 20px; margin-bottom: 24px; }
+        .header h1 { color: #2C3E50; margin: 0; font-size: 28px; }
+        .header p { color: #7F8C8D; margin: 5px 0 0 0; }
+
+        .gate-banner { padding: 14px 18px; border-radius: 6px; margin-bottom: 24px; font-size: 16px; }
+        .gate-pass { background: #E8F8F5; border-left: 6px solid #27AE60; color: #1E8449; }
+        .gate-fail { background: #FDEDEC; border-left: 6px solid #E74C3C; color: #C0392B; }
+        .gate-banner .rationale { color: #555; font-size: 13px; margin-top: 6px; font-weight: normal; }
+
+        .kpi-container { display: flex; justify-content: space-between; margin-bottom: 16px; gap: 8px; }
+        .kpi { text-align: center; padding: 18px; border-radius: 8px; background: #ECF0F1; flex: 1; }
+        .kpi h2 { margin: 0; font-size: 24px; color: #2C3E50; }
+        .kpi p { margin: 5px 0 0 0; font-size: 12px; color: #7F8C8D; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi.score-green { background: #E8F8F5; } .kpi.score-green h2 { color: #27AE60; }
+        .kpi.score-yellow { background: #FEF9E7; } .kpi.score-yellow h2 { color: #F1C40F; }
+        .kpi.score-red { background: #FDEDEC; } .kpi.score-red h2 { color: #E74C3C; }
+
+        .explain { background: #F8F9FB; border: 1px solid #E1E4E8; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; font-size: 13px; }
+        .explain h3 { margin: 0 0 8px 0; color: #2C3E50; font-size: 15px; }
+        .explain h4 { margin: 16px 0 6px 0; color: #2C3E50; font-size: 13px; }
+        .explain table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .explain td, .explain th { text-align: left; padding: 4px 8px; border-bottom: 1px solid #ECECEC; vertical-align: top; }
+        .explain .muted { color: #7F8C8D; }
+        .pill { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: bold; color: #fff; }
+        .pill.CRITICAL { background: #E74C3C; } .pill.HIGH { background: #E67E22; }
+        .pill.MEDIUM { background: #F1C40F; } .pill.LOW { background: #3498DB; } .pill.INFO { background: #95A5A6; }
+
+        .chart-container { text-align: center; margin: 16px 0 32px; }
+        .chart-container img { max-width: 400px; }
+
+        .section-title { background: #2C3E50; color: white; padding: 10px 15px; border-radius: 4px; font-size: 18px; margin-top: 32px; page-break-after: avoid; }
+        .cat-note { color: #7F8C8D; font-size: 12px; margin: 6px 0 0; }
+
+        .finding { border: 1px solid #BDC3C7; border-left: 5px solid #BDC3C7; border-radius: 4px; margin-bottom: 20px; padding: 15px; page-break-inside: avoid; }
+        .finding.CRITICAL { border-left-color: #E74C3C; }
+        .finding.HIGH { border-left-color: #E67E22; }
+        .finding.MEDIUM { border-left-color: #F1C40F; }
+        .finding.LOW { border-left-color: #3498DB; }
+        .finding.INFO { border-left-color: #95A5A6; }
+        .finding-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ECF0F1; padding-bottom: 10px; margin-bottom: 10px; }
+        .finding-id { font-weight: bold; color: #2C3E50; font-family: monospace; font-size: 14px; }
+        .finding-meta { font-size: 12px; color: #7F8C8D; }
+        .badge { padding: 4px 8px; border-radius: 12px; color: white; font-size: 11px; font-weight: bold; }
+        .badge.CRITICAL { background: #E74C3C; } .badge.HIGH { background: #E67E22; }
+        .badge.MEDIUM { background: #F1C40F; } .badge.LOW { background: #3498DB; } .badge.INFO { background: #95A5A6; }
+        .why { color: #7F8C8D; font-size: 12px; font-style: italic; margin: 6px 0; }
+
+        .ai-block { background: #282C34; color: #ABB2BF; padding: 15px; border-radius: 6px; font-family: 'Courier New', Courier, monospace; font-size: 13px; margin-top: 15px; white-space: pre-wrap; word-wrap: break-word; }
+        .ai-block .highlight { color: #E06C75; } .ai-block .path { color: #98C379; } .ai-block .remedy { color: #61AFEF; }
+        .coverage { background: #FEF9E7; border: 1px solid #F7E9A0; border-radius: 6px; padding: 12px 16px; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Deployment Assist Tool (DAT)</h1>
+    <p>Automated DevSecOps Scan Report &amp; AI Remediation Manifest</p>
+    <p style="font-size: 12px; margin-top: 10px;">Generated: 6/3/2026, 12:41:20 AM</p>
+</div>
+
+
+
+<!-- Quality Gate banner: the deploy decision, in plain language -->
+<div class="gate-banner gate-fail">
+    <strong>❌ Quality Gate FAILED — deployment blocked</strong>
+    
+    <div class="rationale">Blocked by 4 HIGH finding(s) at the configured failOn severities (CRITICAL, HIGH).</div>
+</div>
+
+<div class="kpi-container">
+    <div class="kpi score-red"><h2>34/100</h2><p>Readiness Score</p></div>
+    <div class="kpi" style="border-bottom: 4px solid #E74C3C;"><h2>0</h2><p>Critical</p></div>
+    <div class="kpi" style="border-bottom: 4px solid #E67E22;"><h2>4</h2><p>High</p></div>
+    <div class="kpi" style="border-bottom: 4px solid #F1C40F;"><h2>1</h2><p>Medium</p></div>
+    <div class="kpi" style="border-bottom: 4px solid #3498DB;"><h2>0</h2><p>Low</p></div>
+</div>
+
+<!-- Dynamic score breakdown: HOW this number was derived -->
+<div class="explain">
+    <h3>How this score was calculated</h3>
+    <p class="muted"><strong>34/100</strong> — Blocked — critical/high findings present. &nbsp;<span class="muted">(100 − Σ ( weight × log₂(1 + count) ) per severity, clamped to 0–100)</span></p>
+    <table>
+        <tr><th>Severity</th><th>Count</th><th>Weight</th><th>Penalty applied</th></tr>
+        
+            <tr><td><span class="pill CRITICAL">CRITICAL</span></td><td>0</td><td>60</td><td>−0</td></tr>
+        
+            <tr><td><span class="pill HIGH">HIGH</span></td><td>4</td><td>25</td><td>−58</td></tr>
+        
+            <tr><td><span class="pill MEDIUM">MEDIUM</span></td><td>1</td><td>8</td><td>−8</td></tr>
+        
+            <tr><td><span class="pill LOW">LOW</span></td><td>0</td><td>2</td><td>−0</td></tr>
+        
+        <tr><td colspan="3"><strong>Total penalty</strong></td><td><strong>−66</strong></td></tr>
+    </table>
+</div>
+
+<div class="chart-container">
+    
+    <img src="https://quickchart.io/chart?c=%7B%22type%22%3A%22doughnut%22%2C%22data%22%3A%7B%22labels%22%3A%5B%22Critical%22%2C%22High%22%2C%22Medium%22%2C%22Low%22%2C%22Info%22%5D%2C%22datasets%22%3A%5B%7B%22data%22%3A%5B0%2C4%2C1%2C0%2C5%5D%2C%22backgroundColor%22%3A%5B%22%23E74C3C%22%2C%22%23E67E22%22%2C%22%23F1C40F%22%2C%22%233498DB%22%2C%22%2395A5A6%22%5D%7D%5D%7D%2C%22options%22%3A%7B%22plugins%22%3A%7B%22datalabels%22%3A%7B%22color%22%3A%22%23fff%22%7D%7D%7D%7D&amp;w=400&amp;h=250" alt="Vulnerability Distribution Chart" />
+</div>
+
+<!-- How to read this report: the glossary for stakeholders -->
+<div class="section-title">How to read this report</div>
+<div class="explain">
+    <h4>How DAT works</h4>
+    <ol class="muted" style="margin: 4px 0; padding-left: 20px;">
+        <li>Detect the project ecosystem(s) and select the applicable scanners.</li><li>Preflight: verify the app has the inputs needed for a meaningful scan (POC→Enterprise readiness).</li><li>Run security/quality/test scanners AND per-component evaluators (fail-safe, robustness, coherence).</li><li>Deduplicate findings, compute the readiness score, and evaluate the Quality Gate.</li><li>Emit human reports (console / HTML / PDF) and a machine fix-manifest for coding agents (Claude Code).</li>
+    </ol>
+
+    <h4>The Quality Gate</h4>
+    <p class="muted">The Quality Gate is the deploy decision. It FAILS when the scan finds any issue at a severity listed in `failOn` (default: CRITICAL, HIGH), or when a scanner errored. Otherwise it PASSES. This is independent of the readiness score. &nbsp;This run blocks on: <strong>CRITICAL, HIGH</strong>.</p>
+
+    <h4>What the severities mean</h4>
+    <table>
+        
+            <tr><td><span class="pill CRITICAL">CRITICAL</span></td><td>An exploitable flaw or breaking defect that puts production at immediate risk.</td><td class="muted">Must be fixed before deploying.</td></tr>
+        
+            <tr><td><span class="pill HIGH">HIGH</span></td><td>A serious security or correctness issue likely to cause harm in production.</td><td class="muted">Fix before release; blocks the gate by default.</td></tr>
+        
+            <tr><td><span class="pill MEDIUM">MEDIUM</span></td><td>A real weakness that increases risk but is not immediately exploitable.</td><td class="muted">Plan a fix soon; advisory by default.</td></tr>
+        
+            <tr><td><span class="pill LOW">LOW</span></td><td>A minor or cosmetic issue with limited impact.</td><td class="muted">Fix opportunistically.</td></tr>
+        
+            <tr><td><span class="pill INFO">INFO</span></td><td>Informational context, not a defect.</td><td class="muted">No action required.</td></tr>
+        
+    </table>
+
+    <h4>What the finding categories mean</h4>
+    <table>
+        
+            <tr><td><strong>Security</strong></td><td>A vulnerability an attacker could exploit.</td><td class="muted">Directly exposes the application or its data to attack.</td></tr>
+        
+            <tr><td><strong>Defect</strong></td><td>The application behaves incorrectly (e.g. a failing test).</td><td class="muted">Broken logic reaches users and erodes trust.</td></tr>
+        
+            <tr><td><strong>Robustness</strong></td><td>Missing resilience: no timeout, no error handling, no input validation.</td><td class="muted">The app fails unpredictably under load, bad input, or upstream outages.</td></tr>
+        
+            <tr><td><strong>Coherence</strong></td><td>Components disagree (e.g. a UI call that an endpoint will reject).</td><td class="muted">Mismatches cause runtime failures that unit tests miss.</td></tr>
+        
+            <tr><td><strong>Fail-safe</strong></td><td>A control lacks a safe default or handled failure path.</td><td class="muted">When something goes wrong, the app does the unsafe thing.</td></tr>
+        
+            <tr><td><strong>Best practice</strong></td><td>Deviation from a hardening or quality convention.</td><td class="muted">Accumulated drift makes the system harder to secure and maintain.</td></tr>
+        
+            <tr><td><strong>Coverage gap</strong></td><td>A check could not run (missing tool or input), so this area is unverified.</td><td class="muted">An unverified area is not the same as a safe one.</td></tr>
+        
+    </table>
+
+    <h4>The readiness score</h4>
+    <p class="muted">Range 0–100 (higher is healthier). Bands:
+         <strong>80–100</strong> (green) — Healthy — minor issues only.;  <strong>50–79</strong> (yellow) — Caution — address before the next deploy.;  <strong>0–49</strong> (red) — Blocked — critical/high findings present.; 
+        Severity dominates volume (one CRITICAL outweighs many LOWs) and repeated findings of the same severity have diminishing impact. The score is a health indicator — the pass/fail decision is the Quality Gate, not the score.</p>
+</div>
+
+<!-- Coverage gaps: checks that did not run -->
+
+
+    <div class="section-title">Coverage gaps (checks that did not run)</div>
+    <div class="coverage">
+        <p class="muted">These scanners were skipped, so the related risk areas are <strong>unverified</strong> (not necessarily safe):</p>
+        <ul>
+            <li><strong>SonarQube</strong>: Required tool(s) not found on PATH: sonar-scanner</li><li><strong>Qodo Cover-Agent</strong>: Required tool(s) not found on PATH: cover-agent</li><li><strong>Gitleaks (Secrets)</strong>: Required tool(s) not found on PATH: gitleaks</li>
+        </ul>
+    </div>
+
+
+<div class="section-title">Detailed Findings &amp; AI Remediation Data</div>
+<p style="color: #7F8C8D; font-size: 13px; margin-bottom: 24px;">Each finding shows its category and why it matters, plus a machine-readable remediation block for AI assistants (Claude Code, etc.).</p>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Dockle Findings</h3>
+        
+            
+            <div class="finding INFO">
+                <div class="finding-header">
+                    <span class="badge INFO">INFO</span>
+                    <span class="finding-id">DOCKLE-NO-IMAGE</span>
+                    <span class="finding-meta">Dockle</span>
+                </div>
+                
+                <p><strong>Description:</strong> Image &#39;project-image:latest&#39; not found locally. Skipping Dockle scan.</p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">Global/Dependency</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">DOCKLE-NO-IMAGE</span>
+Severity:    <span class="highlight">INFO</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">Image &#39;project-image:latest&#39; not found locally. Skipping Dockle scan.</span>"
+
+                </div>
+            </div>
+        
+    
+
+    
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">OSV-Scanner Findings</h3>
+        
+            
+            <div class="finding HIGH">
+                <div class="finding-header">
+                    <span class="badge HIGH">HIGH</span>
+                    <span class="finding-id">GHSA-4r6h-8v6p-xvw6</span>
+                    <span class="finding-meta">OSV-Scanner</span>
+                </div>
+                
+                <p><strong>Description:</strong> Package xlsx@0.18.5 is vulnerable: Prototype Pollution in sheetJS</p>
+                
+                    <p><strong>Location:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 3px;">/Users/heisenberg/Projects/deployment_assist_tool/package-lock.json</span></p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">/Users/heisenberg/Projects/deployment_assist_tool/package-lock.json</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">GHSA-4r6h-8v6p-xvw6</span>
+Severity:    <span class="highlight">HIGH</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">Package xlsx@0.18.5 is vulnerable: Prototype Pollution in sheetJS</span>"
+
+                </div>
+            </div>
+        
+            
+            <div class="finding HIGH">
+                <div class="finding-header">
+                    <span class="badge HIGH">HIGH</span>
+                    <span class="finding-id">GHSA-5pgg-2g8v-p4x9</span>
+                    <span class="finding-meta">OSV-Scanner</span>
+                </div>
+                
+                <p><strong>Description:</strong> Package xlsx@0.18.5 is vulnerable: SheetJS Regular Expression Denial of Service (ReDoS)</p>
+                
+                    <p><strong>Location:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 3px;">/Users/heisenberg/Projects/deployment_assist_tool/package-lock.json</span></p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">/Users/heisenberg/Projects/deployment_assist_tool/package-lock.json</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">GHSA-5pgg-2g8v-p4x9</span>
+Severity:    <span class="highlight">HIGH</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">Package xlsx@0.18.5 is vulnerable: SheetJS Regular Expression Denial of Service (ReDoS)</span>"
+
+                </div>
+            </div>
+        
+    
+
+    
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">OWASP ZAP Findings</h3>
+        
+            
+            <div class="finding INFO">
+                <div class="finding-header">
+                    <span class="badge INFO">INFO</span>
+                    <span class="finding-id">DAST-COVERAGE-GAP</span>
+                    <span class="finding-meta">OWASP ZAP</span>
+                </div>
+                
+                <p><strong>Description:</strong> No target URL was available for DAST scanning, so dynamic vulnerabilities (XSS, CSRF, SQLi, broken authorization) were NOT tested. Provide --url &lt;target&gt; (or ensure the ephemeral deployment succeeds) to enable active scanning.</p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">Global/Dependency</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">DAST-COVERAGE-GAP</span>
+Severity:    <span class="highlight">INFO</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">No target URL was available for DAST scanning, so dynamic vulnerabilities (XSS, CSRF, SQLi, broken authorization) were NOT tested. Provide --url &lt;target&gt; (or ensure the ephemeral deployment succeeds) to enable active scanning.</span>"
+
+                </div>
+            </div>
+        
+    
+
+    
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">k6 Load Test Findings</h3>
+        
+            
+            <div class="finding INFO">
+                <div class="finding-header">
+                    <span class="badge INFO">INFO</span>
+                    <span class="finding-id">LOAD-COVERAGE-GAP</span>
+                    <span class="finding-meta">k6</span>
+                </div>
+                
+                <p><strong>Description:</strong> No target URL was available for load testing, so performance and robustness under load were NOT measured. Provide --url to enable.</p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">Global/Dependency</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">LOAD-COVERAGE-GAP</span>
+Severity:    <span class="highlight">INFO</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">No target URL was available for load testing, so performance and robustness under load were NOT measured. Provide --url to enable.</span>"
+
+                </div>
+            </div>
+        
+    
+
+    
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Garak (LLM DAST) Findings</h3>
+        
+            
+            <div class="finding INFO">
+                <div class="finding-header">
+                    <span class="badge INFO">INFO</span>
+                    <span class="finding-id">NO-URL</span>
+                    <span class="finding-meta">Garak</span>
+                </div>
+                
+                <p><strong>Description:</strong> No target URL provided for LLM DAST scanning. Use --url to enable.</p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">Global/Dependency</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">NO-URL</span>
+Severity:    <span class="highlight">INFO</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">No target URL provided for LLM DAST scanning. Use --url to enable.</span>"
+
+                </div>
+            </div>
+        
+    
+
+    
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Trivy (FS) Findings</h3>
+        
+            
+            <div class="finding HIGH">
+                <div class="finding-header">
+                    <span class="badge HIGH">HIGH</span>
+                    <span class="finding-id">CVE-2023-30533</span>
+                    <span class="finding-meta">Trivy</span>
+                </div>
+                
+                <p><strong>Description:</strong> xlsx (0.18.5) is vulnerable.</p>
+                
+                    <p><strong>Location:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 3px;">package-lock.json</span></p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">package-lock.json</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">CVE-2023-30533</span>
+Severity:    <span class="highlight">HIGH</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">xlsx (0.18.5) is vulnerable.</span>"
+
+Suggested_Remedy: <span class="remedy">Update to 0.19.3</span>
+
+                </div>
+            </div>
+        
+            
+            <div class="finding HIGH">
+                <div class="finding-header">
+                    <span class="badge HIGH">HIGH</span>
+                    <span class="finding-id">CVE-2024-22363</span>
+                    <span class="finding-meta">Trivy</span>
+                </div>
+                
+                <p><strong>Description:</strong> xlsx (0.18.5) is vulnerable.</p>
+                
+                    <p><strong>Location:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 3px;">package-lock.json</span></p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">package-lock.json</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">CVE-2024-22363</span>
+Severity:    <span class="highlight">HIGH</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">xlsx (0.18.5) is vulnerable.</span>"
+
+Suggested_Remedy: <span class="remedy">Update to 0.20.2</span>
+
+                </div>
+            </div>
+        
+    
+
+    
+
+    
+
+    
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Logic Tests Findings</h3>
+        
+            
+            <div class="finding INFO">
+                <div class="finding-header">
+                    <span class="badge INFO">INFO</span>
+                    <span class="finding-id">LOGIC-TESTS-PASSED</span>
+                    <span class="finding-meta">Logic Tests</span>
+                </div>
+                
+                <p><strong>Description:</strong> Logical test suite passed (command: `npm test`).</p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">Global/Dependency</span>
+Target_Line: <span class="path">N/A</span>
+Issue_Type:  <span class="highlight">LOGIC-TESTS-PASSED</span>
+Severity:    <span class="highlight">INFO</span>
+Category:    <span class="highlight">n/a</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">Logical test suite passed (command: `npm test`).</span>"
+
+                </div>
+            </div>
+        
+    
+
+    
+        <h3 style="color: #2C3E50; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Component Evaluator Findings</h3>
+        
+            
+            <div class="finding MEDIUM">
+                <div class="finding-header">
+                    <span class="badge MEDIUM">MEDIUM</span>
+                    <span class="finding-id">COMP-APICALL-NO-ERROR-HANDLING</span>
+                    <span class="finding-meta">Robustness · Component Evaluator</span>
+                </div>
+                <p class="why">Why it matters: The app fails unpredictably under load, bad input, or upstream outages.</p>
+                <p><strong>Description:</strong> State-changing API call POST ${url}/api/v2/import-scan/ has no error handling — a failed request fails silently or crashes the UI.</p>
+                
+                    <p><strong>Location:</strong> <span style="font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 3px;">src/reporters/defectdojo.ts:23</span></p>
+                
+                <div class="ai-block">
+// AI REMEDIATION MANIFEST
+Target_File: <span class="path">src/reporters/defectdojo.ts</span>
+Target_Line: <span class="path">23</span>
+Issue_Type:  <span class="highlight">COMP-APICALL-NO-ERROR-HANDLING</span>
+Severity:    <span class="highlight">MEDIUM</span>
+Category:    <span class="highlight">robustness</span>
+
+Instruction: Fix the issue described below.
+"<span style="color: #fff">State-changing API call POST ${url}/api/v2/import-scan/ has no error handling — a failed request fails silently or crashes the UI.</span>"
+
+Suggested_Remedy: <span class="remedy">Wrap the call in try/catch (or add .catch) and surface the failure to the user; never assume a mutating request succeeds.</span>
+
+                </div>
+            </div>
+        
+    
+
+
+</body>
+</html>

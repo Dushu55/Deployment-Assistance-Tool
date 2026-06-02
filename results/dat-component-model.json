@@ -1,0 +1,168 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-06-02T19:11:20.150Z",
+  "ecosystem": {
+    "frontend": [
+      "react"
+    ],
+    "backend": [
+      "rest"
+    ],
+    "iac": [
+      "terraform"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "ApiCall:src/components/extractors/react.ts:118:0",
+      "kind": "ApiCall",
+      "label": "GET url",
+      "location": {
+        "file": "src/components/extractors/react.ts",
+        "line": 118
+      },
+      "attributes": {
+        "method": "GET",
+        "url": "url",
+        "hasErrorHandling": false,
+        "hasTimeout": false,
+        "hasAuthHeader": false
+      }
+    },
+    {
+      "id": "ApiCall:src/components/extractors/react.ts:124:1",
+      "kind": "ApiCall",
+      "label": "GET url",
+      "location": {
+        "file": "src/components/extractors/react.ts",
+        "line": 124
+      },
+      "attributes": {
+        "method": "GET",
+        "url": "url",
+        "hasErrorHandling": false,
+        "hasTimeout": false,
+        "hasAuthHeader": false
+      }
+    },
+    {
+      "id": "ApiCall:src/components/extractors/react.ts:124:2",
+      "kind": "ApiCall",
+      "label": "POST url",
+      "location": {
+        "file": "src/components/extractors/react.ts",
+        "line": 124
+      },
+      "attributes": {
+        "method": "POST",
+        "url": "url",
+        "hasErrorHandling": false,
+        "hasTimeout": false,
+        "hasAuthHeader": false
+      }
+    },
+    {
+      "id": "ApiCall:src/reporters/defectdojo.ts:23:3",
+      "kind": "ApiCall",
+      "label": "POST ${url}/api/v2/import-scan/",
+      "location": {
+        "file": "src/reporters/defectdojo.ts",
+        "line": 23
+      },
+      "attributes": {
+        "method": "POST",
+        "url": "${url}/api/v2/import-scan/",
+        "hasErrorHandling": false,
+        "hasTimeout": true,
+        "hasAuthHeader": true
+      }
+    },
+    {
+      "id": "ApiEndpoint:src/components/extractors/api.ts:24:0",
+      "kind": "ApiEndpoint",
+      "label": "GET /path",
+      "location": {
+        "file": "src/components/extractors/api.ts",
+        "line": 24
+      },
+      "attributes": {
+        "method": "GET",
+        "path": "/path",
+        "hasAuthMiddleware": false,
+        "isStateChanging": false
+      }
+    },
+    {
+      "id": "ApiEndpoint:testing_data/index.js:6:1",
+      "kind": "ApiEndpoint",
+      "label": "GET /hash",
+      "location": {
+        "file": "testing_data/index.js",
+        "line": 6
+      },
+      "attributes": {
+        "method": "GET",
+        "path": "/hash",
+        "hasAuthMiddleware": false,
+        "isStateChanging": false
+      }
+    },
+    {
+      "id": "ApiEndpoint:testing_data/index.js:12:2",
+      "kind": "ApiEndpoint",
+      "label": "GET /execute",
+      "location": {
+        "file": "testing_data/index.js",
+        "line": 12
+      },
+      "attributes": {
+        "method": "GET",
+        "path": "/execute",
+        "hasAuthMiddleware": false,
+        "isStateChanging": false
+      }
+    },
+    {
+      "id": "NetworkResource:testing_data/main.tf:23:0",
+      "kind": "NetworkResource",
+      "label": "aws_security_group \"allow_all\"",
+      "location": {
+        "file": "testing_data/main.tf",
+        "line": 23
+      },
+      "attributes": {
+        "resourceType": "aws_security_group",
+        "name": "allow_all",
+        "openToWorld": true,
+        "ingressPorts": [
+          0
+        ],
+        "ingressCidrs": [
+          "0.0.0.0/0"
+        ],
+        "exposesSensitivePort": false
+      }
+    }
+  ],
+  "edges": [],
+  "coverage": [
+    {
+      "extractor": "react",
+      "filesScanned": 86,
+      "nodesFound": 4,
+      "note": "Heuristic parsing (V1): 0 JSX/TSX file(s) scanned for UI elements, 86 JS/TS file(s) for fetch/axios calls. Dynamic props and templated URLs captured best-effort; AST parsing planned."
+    },
+    {
+      "extractor": "api",
+      "filesScanned": 86,
+      "nodesFound": 3,
+      "note": "Heuristic route detection (V1): auth-middleware inferred by identifier hints; dynamic route registration not traced."
+    },
+    {
+      "extractor": "network",
+      "filesScanned": 1,
+      "nodesFound": 1,
+      "note": "Heuristic Terraform parsing (V1): AWS security groups/rules only; variables and modules not resolved."
+    }
+  ]
+}

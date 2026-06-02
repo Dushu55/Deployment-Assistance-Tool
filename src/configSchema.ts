@@ -26,6 +26,7 @@ export const DatConfigSchema = z.object({
   scanners: z.record(z.string(), scannerEntry),
   failOn: z.array(SEVERITY),
   profile: z.enum(['quick', 'standard', 'full', 'security']).optional(),
+  exclude: z.array(z.string()).optional(),
   deployer: z.object({
     enabled: z.boolean().optional(),
     provider: z.enum(['gcp', 'vercel']).optional(),
