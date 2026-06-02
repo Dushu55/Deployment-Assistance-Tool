@@ -1,7 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
-const DEFAULT_EXCLUDES = ['node_modules', 'dist', 'build', 'coverage', '.git', 'venv', '.next', 'out', 'target', '__pycache__', '.gemini', '.opencode', '.swc'];
+const DEFAULT_EXCLUDES = ['node_modules', 'dist', 'build', 'coverage', '.git', 'venv', '.next', 'out', 'target', '__pycache__', '.gemini', '.opencode', '.swc', 'testing_data'];
+
+// Test/spec files aren't runtime components — extracting "endpoints"/"inputs" from them only yields
+// false positives (e.g. a mock POST /api/login in a unit test). Skip them in the component walk.
+const TEST_FILE_RE = /\.(test|spec)\.[cm]?[jt]sx?$/;
 
 /** Recursively collect files matching any of `includeExts`, skipping common build/vendor dirs. */
 export function findFiles(root: string, includeExts: string[], excludeDirs: string[] = DEFAULT_EXCLUDES): string[] {
@@ -24,7 +28,7 @@ export function findFiles(root: string, includeExts: string[], excludeDirs: stri
       if (!excludeDirs.includes(entry)) {
         results.push(...findFiles(full, includeExts, excludeDirs));
       }
-    } else if (includeExts.some(ext => entry.endsWith(ext))) {
+    } else if (includeExts.some(ext => entry.endsWith(ext)) && !TEST_FILE_RE.test(entry)) {
       results.push(full);
     }
   }

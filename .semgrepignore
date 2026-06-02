@@ -1,0 +1,14 @@
+# Keep DAT's self-scan (dogfood) focused on first-party production code.
+# These paths are not shipped code, so SAST findings in them are noise in DAT's own Security tab:
+#   - testing_data/ holds DELIBERATELY-vulnerable fixtures (planted secrets, bad Dockerfiles)
+#     that exist so DAT can prove it detects them — they must not appear as DAT's own alerts.
+#   - *.test.ts are unit/integration tests.
+#   - scripts/ are local dev/maintenance utilities (excel mocks, webhook simulators), not shipped.
+#   - dist/ is compiled output (scanning it double-counts src/).
+# Note: this file only affects scans run from THIS repo (DAT scanning itself). When DAT scans an
+# external app, Semgrep reads that app's own .semgrepignore, not this one.
+testing_data/
+**/*.test.ts
+scripts/
+dist/
+node_modules/
