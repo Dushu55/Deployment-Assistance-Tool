@@ -27,7 +27,7 @@ export function parseSemgrepResults(parsedOutput: any): Issue[] {
   }));
 }
 
-export async function runSemgrep(rules: string[] = ['p/security-audit'], customRulesDir: string = 'rules'): Promise<ScannerResult> {
+export async function runSemgrep(rules: string[] = ['p/security-audit'], customRulesDir: string = 'rules', excludes: string[] = []): Promise<ScannerResult> {
   const startTime = Date.now();
   try {
     // Build command arguments
@@ -41,6 +41,11 @@ export async function runSemgrep(rules: string[] = ['p/security-audit'], customR
     if (fs.existsSync(customPath)) {
       args.push('--config', customPath);
     }
+
+    // Honor the config `exclude` globs so Semgrep doesn't even scan excluded trees.
+    excludes.forEach(pattern => {
+      args.push('--exclude', pattern);
+    });
 
     // Scan current directory
     args.push('.');
@@ -102,6 +107,6 @@ export const semgrepScanner: Scanner = {
   async run(ctx) {
     const rules = ctx.config.scanners.semgrep?.rules || ['p/security-audit'];
     const customRulesDir = ctx.config.scanners.semgrep?.customRulesDir || 'rules';
-    return runSemgrep(rules, customRulesDir);
+    return runSemgrep(rules, customRulesDir, ctx.config.exclude ?? []);
   }
 };

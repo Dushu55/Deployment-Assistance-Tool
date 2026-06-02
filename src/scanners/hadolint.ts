@@ -5,7 +5,7 @@ import fs from 'fs';
 import { refactorToDistroless } from '../autofix/docker.js';
 import { logger } from '../logger.js';
 
-export async function runHadolint(target: string = 'testing_data/Dockerfile', enableAutoFix: boolean = false): Promise<ScannerResult> {
+export async function runHadolint(target: string = 'Dockerfile', enableAutoFix: boolean = false): Promise<ScannerResult> {
   const startTime = Date.now();
   try {
     if (!fs.existsSync(target)) {
@@ -106,7 +106,10 @@ export const hadolintScanner: Scanner = {
   requiredBinaries: ['hadolint'],
   expectedInputs: [{ label: 'Dockerfile', category: 'dockerfile', anyOf: ['Dockerfile'], consequence: 'Container hardening and Dockerfile best-practice checks are unavailable.' }],
   async run(ctx) {
-    const target = ctx.config.scanners.hadolint?.target || 'testing_data/Dockerfile';
+    // Lint the target app's real Dockerfile (workspace root). Fall back to the legacy fixture
+    // path only when no root Dockerfile exists, so DAT's own self-scan keeps working.
+    const target = ctx.config.scanners.hadolint?.target
+      || (fs.existsSync('Dockerfile') ? 'Dockerfile' : 'testing_data/Dockerfile');
     const enableAutoFix = ctx.config.autoFix?.enabled ?? true;
     return runHadolint(target, enableAutoFix);
   }

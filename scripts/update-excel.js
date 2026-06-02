@@ -1,6 +1,7 @@
-import xlsx from 'xlsx';
+import ExcelJS from 'exceljs';
 
-const workbook = xlsx.readFile('DAT_Development_Plan.xlsx');
+const workbook = new ExcelJS.Workbook();
+await workbook.xlsx.readFile('DAT_Development_Plan.xlsx');
 
 const sheetName = 'Future Roadmap';
 const data = [
@@ -109,18 +110,14 @@ const data = [
   ]
 ];
 
-const newSheet = xlsx.utils.aoa_to_sheet(data);
+// Replace the sheet if it already exists, then repopulate it.
+const existing = workbook.getWorksheet(sheetName);
+if (existing) workbook.removeWorksheet(existing.id);
+const newSheet = workbook.addWorksheet(sheetName);
+newSheet.addRows(data);
 
-// Define column widths for better readability
-const wscols = [
-  { wch: 5 },  // #
-  { wch: 15 }, // Original Feature
-  { wch: 30 }, // Current Implementation
-  { wch: 50 }, // Future Roadmap
-];
-newSheet['!cols'] = wscols;
+// Define column widths for better readability (#, Original Feature, Current Impl, Future Roadmap).
+[5, 15, 30, 50].forEach((width, i) => { newSheet.getColumn(i + 1).width = width; });
 
-workbook.Sheets[sheetName] = newSheet;
-
-xlsx.writeFile(workbook, 'DAT_Development_Plan.xlsx');
+await workbook.xlsx.writeFile('DAT_Development_Plan.xlsx');
 console.log('Successfully updated DAT_Development_Plan.xlsx');

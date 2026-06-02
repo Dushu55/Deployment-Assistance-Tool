@@ -2,10 +2,13 @@ import { runCommand } from '../runner.js';
 import { ScannerResult, Issue, Scanner } from '../types.js';
 import { mapSeverity } from '../utils.js';
 
-export async function runCheckov(targetDir: string = '.'): Promise<ScannerResult> {
+export async function runCheckov(targetDir: string = '.', excludes: string[] = []): Promise<ScannerResult> {
   const startTime = Date.now();
   try {
-    const result = await runCommand('checkov', ['-d', targetDir, '-o', 'json', '--quiet'], 300000);
+    const args = ['-d', targetDir, '-o', 'json', '--quiet'];
+    // Honor the config `exclude` globs so fixtures/vendored IaC aren't reported.
+    excludes.forEach(pattern => args.push('--skip-path', pattern));
+    const result = await runCommand('checkov', args, 300000);
     const durationMs = Date.now() - startTime;
 
     // Checkov returns a non-zero exit code if vulnerabilities are found
@@ -61,6 +64,6 @@ export const checkovScanner: Scanner = {
   expectedInputs: [{ label: 'IaC files (Terraform/Dockerfile)', category: 'iac', anyOf: ['Dockerfile'], anyExtRecursive: ['.tf'], consequence: 'Infrastructure misconfigurations go undetected — IAM, network, exposed secrets.' }],
   async run(ctx) {
     const targetDir = ctx.config.scanners.checkov?.targetDir || '.';
-    return runCheckov(targetDir);
+    return runCheckov(targetDir, ctx.config.exclude ?? []);
   }
 };

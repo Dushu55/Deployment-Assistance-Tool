@@ -21,11 +21,11 @@ import { PROFILES } from './profiles.js';
 import { isNotApplicable, DEFAULT_CRITICAL, DEFAULT_HIGHLY_ADVISED } from './inputs.js';
 import { checkReadiness, printReadiness } from './readiness.js';
 import { ALL_SCANNERS } from './scanners/index.js';
-import { calculateReadinessScore, deduplicateResults } from './utils.js';
+import { calculateReadinessScore, deduplicateResults, resolveExcludes, applyExcludes } from './utils.js';
 import { activeProcesses } from './runner.js';
 import { AstGrepAutoFixer } from './autofix/index.js';
 import { logger } from './logger.js';
-import { EnvironmentDetector } from './env.js';
+import { EnvironmentDetector, databaseSummaryLine } from './env.js';
 import { emitAuditStart, emitAuditEnd, summarizeScannerMetrics, AuditContext } from './audit.js';
 import { missingBinaries, isBinaryAvailable } from './utils/preflight.js';
 import { GcpCloudRunDeployer } from './deployers/gcp.js';
@@ -230,6 +230,7 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
 
   const envDetector = new EnvironmentDetector();
   const detectedLanguages = envDetector.detectLanguages();
+  const detectedDatabases = envDetector.detectDatabases();
   
   // 1. Load config
   const config = loadConfig(configPath);
@@ -251,6 +252,8 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     });
     readinessLevel = readiness.readinessLevel;
     printReadiness(readiness);
+    const dbLine = databaseSummaryLine(detectedDatabases);
+    if (dbLine) console.log(chalk.gray(`🗄️  Detected database(s): ${dbLine}`));
     if (options.strictPreflight && readiness.requiredMissing > 0) {
       throw new Error(`Preflight failed: ${readiness.requiredMissing} required input(s) missing. Configure them or run without --strict-preflight.`);
     }
@@ -383,7 +386,7 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   const maxConcurrency = config.runner?.maxConcurrency ?? 4;
   const scannerTimeoutMs = config.runner?.scannerTimeoutMs ?? 600000;
   console.log(chalk.gray(`\nExecuting scanners (concurrency ${maxConcurrency}, per-scanner timeout ${Math.round(scannerTimeoutMs / 1000)}s)...`));
-  const runResults = await runWithConcurrencyLimit(runnableScanners, { config, url: options.url, authToken: options.authToken, detectedLanguages }, maxConcurrency, scannerTimeoutMs);
+  const runResults = await runWithConcurrencyLimit(runnableScanners, { config, url: options.url, authToken: options.authToken, detectedLanguages, detectedDatabases }, maxConcurrency, scannerTimeoutMs);
   const results = [...skippedResults, ...runResults];
 
   // 5.5 Trigger AST Auto-Fixer ONLY when explicitly enabled.
@@ -453,8 +456,10 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     }
   }
 
-  // 6. Aggregate and Deduplicate Results (global fingerprint dedup across all scanners)
-  const deduplicatedResults = deduplicateResults(results);
+  // 6. Apply config `exclude` path globs uniformly (drops findings under excluded paths from
+  // every scanner + the component evaluator in one place), then dedup across all scanners.
+  const excludes = resolveExcludes(config);
+  const deduplicatedResults = deduplicateResults(applyExcludes(results, excludes));
 
   const report: AggregatedReport = {
     timestamp: new Date().toISOString(),

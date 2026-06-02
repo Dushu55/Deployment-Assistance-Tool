@@ -29,7 +29,6 @@
     "puppeteer": "^25.1.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
-    "xlsx": "^0.18.5",
     "xml2js": "^0.6.2",
     "yaml": "^2.4.5",
     "zod": "^4.4.3"
@@ -38,6 +37,7 @@
     "@types/ejs": "^3.1.5",
     "@types/node": "^20.14.2",
     "@types/xml2js": "^0.4.14",
+    "exceljs": "^4.4.0",
     "tsx": "^4.15.1",
     "typescript": "^5.4.5"
   }

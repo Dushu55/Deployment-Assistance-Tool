@@ -1,7 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { mapSeverity, calculateReadinessScore, deduplicateResults, issueFingerprint } from './utils.js';
+import { mapSeverity, calculateReadinessScore, deduplicateResults, issueFingerprint, matchesExclude, applyExcludes } from './utils.js';
 import { ScannerResult } from './types.js';
+
+test('matchesExclude', async (t) => {
+  await t.test('matches directory/path prefixes', () => {
+    assert.strictEqual(matchesExclude('testing_data/main.tf', ['testing_data']), true);
+    assert.strictEqual(matchesExclude('/testing_data/main.tf', ['testing_data']), true); // leading slash normalised
+    assert.strictEqual(matchesExclude('/Users/me/proj/testing_data/package-lock.json', ['testing_data']), true); // absolute path (OSV-style)
+    assert.strictEqual(matchesExclude('src/components/extractors/react.ts', ['src/components/extractors']), true);
+    assert.strictEqual(matchesExclude('src/components/builder.ts', ['src/components/extractors']), false);
+  });
+  await t.test('does not match a sibling whose name shares a prefix', () => {
+    assert.strictEqual(matchesExclude('testing_database/x.ts', ['testing_data']), false);
+  });
+  await t.test('matches suffix globs', () => {
+    assert.strictEqual(matchesExclude('src/a.test.ts', ['**/*.test.ts']), true);
+    assert.strictEqual(matchesExclude('a.test.ts', ['*.test.ts']), true);
+    assert.strictEqual(matchesExclude('src/a.ts', ['**/*.test.ts']), false);
+  });
+  await t.test('a bare * never matches everything; empty/undefined are safe', () => {
+    assert.strictEqual(matchesExclude('anything.ts', ['*']), false);
+    assert.strictEqual(matchesExclude(undefined, ['testing_data']), false);
+    assert.strictEqual(matchesExclude('x.ts', []), false);
+  });
+});
+
+test('applyExcludes', async (t) => {
+  await t.test('drops only issues whose file matches, leaving path-less findings', () => {
+    const results: ScannerResult[] = [{
+      scannerName: 'X', success: true, durationMs: 1,
+      issues: [
+        { id: 'a', severity: 'HIGH', message: '', source: 'X', file: 'testing_data/main.tf' },
+        { id: 'b', severity: 'HIGH', message: '', source: 'X', file: 'src/index.ts' },
+        { id: 'c', severity: 'INFO', message: '', source: 'X' } // no file → kept
+      ]
+    }];
+    const out = applyExcludes(results, ['testing_data']);
+    assert.deepStrictEqual(out[0].issues.map(i => i.id), ['b', 'c']);
+  });
+  await t.test('no patterns → returns input unchanged', () => {
+    const r: ScannerResult[] = [{ scannerName: 'X', success: true, durationMs: 1, issues: [] }];
+    assert.strictEqual(applyExcludes(r, []), r);
+  });
+});
 
 test('mapSeverity', async (t) => {
   await t.test('maps known severities', () => {

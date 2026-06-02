@@ -7,6 +7,17 @@ rules:
       - javascript
       - typescript
     severity: WARNING
+    # console.log is the correct, intended channel for DAT's user-facing CLI + report output.
+    # Excluding those first-party output files keeps the rule meaningful — it still catches stray
+    # debug logging left in scanners, deployers, extractors, etc.
+    paths:
+      exclude:
+        - "src/index.ts"
+        - "src/orchestrator.ts"
+        - "src/readiness.ts"
+        - "src/reporter.ts"
+        - "*.test.ts"
+        - "testing_data/"
 
   - id: dat-no-todo-fixme
     patterns:
@@ -16,6 +27,10 @@ rules:
       - javascript
       - typescript
     severity: INFO
+    paths:
+      exclude:
+        - "*.test.ts"
+        - "testing_data/"
 
   - id: dat-no-process-exit
     patterns:
@@ -25,3 +40,11 @@ rules:
       - javascript
       - typescript
     severity: ERROR
+    # process.exit is legitimate in the CLI entrypoint (shell exit codes) and the signal handler;
+    # the rule still flags abrupt exits added anywhere else.
+    paths:
+      exclude:
+        - "src/index.ts"
+        - "src/orchestrator.ts"
+        - "*.test.ts"
+        - "testing_data/"

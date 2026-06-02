@@ -36,6 +36,12 @@
 #   # location: us-central1
 #   # model: gemini-2.5-flash
 # -------------------------------------------------------------------------------------
+#
+# ⚠️ NOTE for real projects: the `targetDir` values below (testing_data/app, testing_data/llm_app)
+# point at DAT's OWN test fixtures — they exist so DAT can dogfood-scan itself. When you copy this
+# file into your application, OMIT every `targetDir` (and `hadolint.target`): unset, each scanner
+# defaults to your workspace root, which is what you want. Only set them to scan a sub-directory.
+# -------------------------------------------------------------------------------------
 
 scanners:
   semgrep:
@@ -58,10 +64,13 @@ scanners:
     enabled: true
   zap:
     enabled: true
+    # DAT is a CLI with no web surface to DAST during a self-scan, so a missing target URL is a
+    # coverage note (INFO), not a HIGH gate failure. Real apps should leave this true.
+    failOnMissingTarget: false
   jest:
-    enabled: true
-    threshold: 80
-    targetDir: "testing_data/app"
+    # DAT's own tests use node:test (`npm test` → tsx --test), not Jest. The Jest coverage scanner
+    # is N/A here; Logic Tests below runs the real suite.
+    enabled: false
   coverAgent:
     enabled: true
   keploy:
@@ -69,9 +78,10 @@ scanners:
   k6:
     enabled: true
     thresholdMs: 500
+    # Like ZAP above: no DAST target during a static self-scan → coverage note (INFO), not HIGH.
+    failOnMissingTarget: false
   promptfoo:
     enabled: true
-    targetDir: "testing_data/llm_app"
   garak:
     enabled: true
   gitleaks:
@@ -80,12 +90,21 @@ scanners:
     enabled: true
     # Treat a missing test suite as a HIGH coverage-gap finding (set false to downgrade to INFO).
     failOnMissingTests: true
-    # Optionally override the auto-detected test command, e.g. "npm test" or "pytest -q".
-    # command: "npm test"
-    targetDir: "testing_data/app"
+    # No targetDir → runs DAT's real `npm test` (230 node:test cases) at the repo root.
 failOn:
   - CRITICAL
   - HIGH
+
+# Paths excluded from EVERY scanner + the component walk (dir prefix, or *.ext / **/*.test.ts).
+#   - testing_data/  : DELIBERATELY-vulnerable fixtures (planted secrets, bad IaC/Dockerfiles) that
+#                      exist to prove DAT detects them — they must not be DAT's own alerts.
+#   - scripts/       : local dev/maintenance utilities, not shipped code.
+#   - src/components/extractors/ : the extractors' own source contains API-call-shaped sample
+#                      patterns the component evaluator would otherwise flag as real endpoints.
+exclude:
+  - testing_data
+  - scripts
+  - src/components/extractors
 
 # Resilience controls. maxConcurrency caps parallel scanners; scannerTimeoutMs is a hard
 # wall-clock bound per scanner (a hung scanner is reported 'timed out' and the run continues).

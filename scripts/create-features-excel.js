@@ -1,4 +1,4 @@
-import xlsx from 'xlsx';
+import ExcelJS from 'exceljs';
 
 const features = [
   ['Category', 'Feature Name', 'Description', 'Supported Ecosystems', 'Status'],
@@ -41,20 +41,13 @@ const features = [
   ['Reporting & Export', 'DefectDojo API Sync', 'Pushes aggregated findings automatically into enterprise vulnerability management dashboards.', 'DefectDojo', 'Production']
 ];
 
-const wb = xlsx.utils.book_new();
-const ws = xlsx.utils.aoa_to_sheet(features);
+const wb = new ExcelJS.Workbook();
+const ws = wb.addWorksheet('Exhaustive Features');
+ws.addRows(features);
 
-// Set column widths
-ws['!cols'] = [
-  { wch: 25 }, // Category
-  { wch: 35 }, // Feature Name
-  { wch: 90 }, // Description
-  { wch: 35 }, // Supported Ecosystems
-  { wch: 15 }  // Status
-];
-
-xlsx.utils.book_append_sheet(wb, ws, 'Exhaustive Features');
+// Set column widths (Category, Feature Name, Description, Supported Ecosystems, Status).
+[25, 35, 90, 35, 15].forEach((width, i) => { ws.getColumn(i + 1).width = width; });
 
 const fileName = 'DAT_Exhaustive_Features.xlsx';
-xlsx.writeFile(wb, fileName);
+await wb.xlsx.writeFile(fileName);
 console.log(`Successfully generated ${fileName}`);
