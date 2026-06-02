@@ -105,15 +105,14 @@ jobs:
       - name: Generate DAT's own SBOM (CycloneDX)
         if: ${{ always() }}
         continue-on-error: true
-        # Skip vendored/build dirs so the SBOM reflects DAT's declared deps and completes reliably.
-        run: |
-          if command -v trivy >/dev/null; then
-            trivy fs --quiet --format cyclonedx \
-              --skip-dirs node_modules --skip-dirs dist --skip-dirs testing_data \
-              --output dat-sbom.cdx.json .
-          else
-            echo "trivy unavailable; skipping SBOM"
-          fi
+        # Use the official, self-contained Trivy action (the bespoke install.sh was flaky).
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: cyclonedx
+          output: dat-sbom.cdx.json
+          skip-dirs: node_modules,dist,testing_data
 
       - name: Upload DAT SBOM artifact
         if: ${{ always() && hashFiles('dat-sbom.cdx.json') != '' }}
