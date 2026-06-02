@@ -34,6 +34,8 @@ export const DatConfigSchema = z.object({
       projectId: z.string().optional(),
       region: z.string().optional(),
       cloudSqlInstance: z.string().optional(),
+      databaseUrl: z.string().optional(),
+      env: z.record(z.string(), z.string()).optional(),
       cpu: z.string().optional(),
       memory: z.string().optional(),
       maxInstances: z.number().int().positive().optional()
