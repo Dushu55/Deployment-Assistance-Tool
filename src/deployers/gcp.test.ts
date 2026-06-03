@@ -60,11 +60,19 @@ test('GcpCloudRunDeployer.deployBranch', async (t) => {
       return { stdout: '', stderr: '' };
     };
     const url = 'postgres://u:p@h:5432/db?sslmode=require&x=1';
-    const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', databaseUrl: url, env: { NEXTAUTH_SECRET: 'abc' }, execFn });
+    let deployCmd = '';
+    const recordingExec: ExecFn = async (cmd: string) => {
+      if (cmd.includes('run deploy')) deployCmd = cmd;
+      return execFn(cmd);
+    };
+    const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', databaseUrl: url, env: { NEXTAUTH_SECRET: 'abc' }, execFn: recordingExec });
     await d.deployBranch('main');
     // Value is JSON-quoted in YAML, so special chars survive intact.
     assert.match(envFileContent, /DATABASE_URL: "postgres:\/\/u:p@h:5432\/db\?sslmode=require&x=1"/);
     assert.match(envFileContent, /NEXTAUTH_SECRET: "abc"/);
+    // Injected at BOTH runtime and build time (next build needs the DB).
+    assert.match(deployCmd, /--env-vars-file=/);
+    assert.match(deployCmd, /--build-env-vars-file=/);
     // Temp file is cleaned up after the deploy.
     assert.ok(!fs.existsSync(envFilePath), 'env file should be removed after deploy');
   });

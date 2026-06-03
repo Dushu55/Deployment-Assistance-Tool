@@ -30,6 +30,8 @@ import { emitAuditStart, emitAuditEnd, summarizeScannerMetrics, AuditContext } f
 import { missingBinaries, isBinaryAvailable } from './utils/preflight.js';
 import { GcpCloudRunDeployer } from './deployers/gcp.js';
 import { EphemeralDeployment } from './deployers/index.js';
+import { createProvisioner, DbProvisioner, ProvisionedDb } from './deployers/db/provisioner.js';
+import { runMigrations } from './deployers/db/migrate.js';
 import { promisify } from 'util';
 import { execFile } from 'child_process';
 
@@ -335,12 +337,41 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   // A manually-supplied --url always wins and short-circuits provisioning.
   let ephemeralDeployment: EphemeralDeployment | undefined;
   let deployer: GcpCloudRunDeployer | undefined;
+  let provisioner: DbProvisioner | null = null;
+  let provisionedDb: ProvisionedDb | undefined;
   const deployRequested = options.deploy || config.deployer?.enabled === true;
   if (deployRequested && !options.url) {
     if (!(await isBinaryAvailable('gcloud'))) {
       throw new Error('--deploy requires the gcloud CLI to be installed and authenticated (run `gcloud auth login`).');
     }
-    deployer = new GcpCloudRunDeployer(config.deployer?.gcp);
+
+    // Auto-provision an ephemeral database when configured and the app uses one, so a DB-backed
+    // app boots for DAST with zero manual DB setup. Migrate it, then hand the URL to the deployer
+    // (injected at build + runtime). Best-effort: a failure degrades to deploying without a DB.
+    provisioner = createProvisioner(config.deployer?.database, { projectId: config.deployer?.gcp?.projectId });
+    if (provisioner && detectedDatabases.length > 0) {
+      const engine = detectedDatabases[0].engine;
+      try {
+        console.log(chalk.cyan(`\n🗄️  Auto-provisioning an ephemeral ${engine} database (${provisioner.name})...`));
+        provisionedDb = await provisioner.provision(engine);
+        const migrated = await runMigrations({
+          workspaceRoot: process.cwd(),
+          databaseUrl: provisionedDb.databaseUrl,
+          migrateCommand: config.deployer?.database?.migrateCommand,
+          seedCommand: config.deployer?.database?.seedCommand
+        });
+        console.log(chalk.gray(migrated ? '🗄️  Database provisioned and migrated.' : '🗄️  Database provisioned (migrations skipped/failed — see logs).'));
+      } catch (err: any) {
+        console.log(chalk.yellow(`⚠️  Database auto-provisioning failed: ${err.message}. Continuing without an auto-provisioned DB.`));
+        provisionedDb = undefined;
+      }
+    }
+
+    deployer = new GcpCloudRunDeployer({
+      ...config.deployer?.gcp,
+      databaseUrl: provisionedDb?.databaseUrl ?? config.deployer?.gcp?.databaseUrl,
+      cloudSqlInstance: provisionedDb?.cloudSqlInstance ?? config.deployer?.gcp?.cloudSqlInstance
+    });
     const { branch, sha } = await resolveGitRef();
     try {
       console.log(chalk.cyan(`\n☁️  Provisioning ephemeral GCP Cloud Run environment (branch: ${branch})...`));
@@ -609,6 +640,11 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       } catch (e: any) {
         logger.error(`Teardown failed for ${ephemeralDeployment.id}: ${e.message}`);
       }
+    }
+    // Destroy the auto-provisioned database too (even if the deploy itself failed).
+    if (provisionedDb && provisioner) {
+      await provisioner.teardown(provisionedDb.handle); // never throws
+      console.log(chalk.gray('🗄️  Ephemeral database torn down.'));
     }
   }
 }

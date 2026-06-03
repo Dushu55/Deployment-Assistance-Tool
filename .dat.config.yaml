@@ -119,6 +119,14 @@ exclude:
 deployer:
   enabled: false          # set true, or pass --deploy, to provision a preview per scan
   provider: gcp
+  # Zero-config ephemeral database: DAT creates a throwaway DB, migrates it, injects it into the
+  # preview (build + runtime), scans, and destroys it — so a DB-backed app needs no manual DB setup.
+  # database:
+  #   provider: neon          # neon (default if NEON_API_KEY set) | cloudsql (opt-in, costs) | manual
+  #   autoProvision: true
+  #   migrateCommand: ""      # optional; auto-detected for prisma/drizzle, else set it here
+  #   seedCommand: ""         # optional
+  #   neon: { regionId: aws-us-east-1 }   # NEON_API_KEY supplied via env
   gcp:
     projectId: "dat-tool"
     region: us-central1

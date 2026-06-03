@@ -98,6 +98,17 @@ export interface DatConfig {
   deployer?: {
     enabled?: boolean;
     provider?: 'gcp' | 'vercel';
+    // Auto-provision an ephemeral database for the preview so a DB-backed app boots for DAST
+    // without the user configuring anything. The DB is created empty, migrated, injected, and
+    // destroyed on teardown. 'manual' (default) keeps today's behavior (use databaseUrl/env/none).
+    database?: {
+      provider?: 'neon' | 'cloudsql' | 'manual';  // default: neon if NEON_API_KEY set, else manual
+      autoProvision?: boolean;                     // default true when provider is neon/cloudsql
+      migrateCommand?: string;                     // override; else auto-detected (prisma/drizzle/…)
+      seedCommand?: string;                        // optional seed after migrate
+      neon?: { regionId?: string };                // Neon region (apiKey via NEON_API_KEY env)
+      cloudsql?: { tier?: string; region?: string }; // Cloud SQL instance tier/region (opt-in, costs)
+    };
     gcp?: {
       projectId?: string;        // overrides GCP_PROJECT_ID env var
       region?: string;           // overrides GCP_REGION (default: us-central1)

@@ -12,13 +12,14 @@ export async function runCommand(
   command: string,
   args: string[],
   timeoutMs: number = 60000, // 60 seconds default timeout
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
+  env?: Record<string, string | undefined> // extra env merged over process.env (e.g. DATABASE_URL)
 ): Promise<RunResult> {
   return new Promise((resolve, reject) => {
     // Not a command-injection sink: spawn() is invoked WITHOUT shell:true and with an explicit
     // args array, so `command`/`args` go straight to execve — no shell metacharacter
     // interpretation. `command` is an internal scanner binary name, never user-controlled input.
-    const child = spawn(command, args, { stdio: 'pipe', cwd }); // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process
+    const child = spawn(command, args, { stdio: 'pipe', cwd, env: env ? { ...process.env, ...env } : undefined }); // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process
     activeProcesses.add(child);
 
     let stdout = '';

@@ -134,8 +134,10 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
         envFile = path.join(os.tmpdir(), `dat-env-${crypto.randomBytes(6).toString('hex')}.yaml`);
         const yaml = envKeys.map(k => `${k}: ${JSON.stringify(envMap[k])}`).join('\n') + '\n';
         fs.writeFileSync(envFile, yaml, { mode: 0o600 });
-        logger.info(`Injecting ${envKeys.length} runtime env var(s) into the preview: ${envKeys.join(', ')}`);
-        cmd += ` --env-vars-file='${envFile}'`; // single-quoted: path is internal, no shell interp
+        logger.info(`Injecting ${envKeys.length} env var(s) into the preview (build + runtime): ${envKeys.join(', ')}`);
+        // Runtime AND build: many apps (e.g. Next.js prerender) touch the DB during `npm run build`,
+        // which runs in Cloud Build before runtime env applies. Pass the same file to both.
+        cmd += ` --env-vars-file='${envFile}' --build-env-vars-file='${envFile}'`; // single-quoted: path is internal
       }
 
       logger.info(`Building and deploying to GCP Cloud Run (scale-to-zero, ${cpu} CPU / ${memory}, max ${this.maxInstances} instance(s))... (This may take 1-3 minutes)`);
