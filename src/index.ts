@@ -19,6 +19,8 @@ import { EnvironmentDetector, databaseSummaryLine } from './env.js';
 import { isProfileName, PROFILE_NAMES } from './profiles.js';
 import { loadConfig } from './config.js';
 import { checkReadiness, printReadiness } from './readiness.js';
+import { startReportServer } from './server/serve.js';
+import { serverPort } from './server/library.js';
 
 const program = new Command();
 
@@ -90,6 +92,7 @@ program
   .option('--skip-preflight', 'Skip the application-readiness check at scan start')
   .option('--strict-preflight', 'Abort the scan if a required input (Dockerfile / tests / DAST target / config) is missing')
   .option('--auto-fix', 'Apply autonomous AST auto-fixes to the working tree (mutates files; verified by your test suite and reverted on failure)')
+  .option('--no-publish', 'Do not copy the HTML report into the local ~/.dat/reports library or print a hosted link')
   .action(async (options) => {
     try {
       if (options.profile && !isProfileName(options.profile)) {
@@ -169,6 +172,26 @@ program
       console.log(chalk.red.bold('\n❌ Failed to build component model:'), error.message);
       process.exit(1);
     }
+  });
+
+program
+  .command('serve')
+  .description('Host the local report library at http://localhost:<port> (loopback only) so scan reports are viewable in a browser')
+  .option('-p, --port <port>', 'Port to listen on (default 4737, or DAT_PORT)')
+  .action((options) => {
+    const port = options.port ? parseInt(options.port, 10) : serverPort();
+    if (!Number.isInteger(port) || port <= 0 || port >= 65536) {
+      console.log(chalk.red.bold(`\n❌ Invalid --port "${options.port}".`));
+      process.exit(1);
+    }
+    const server = startReportServer(port);
+    server.on('listening', () => {
+      console.log(chalk.green.bold(`\n📰 DAT reports: http://localhost:${port}`) + chalk.gray('  (loopback only — Ctrl-C to stop)'));
+    });
+    server.on('error', (err: any) => {
+      console.log(chalk.red.bold(`\n❌ Could not start report server on port ${port}: ${err.code === 'EADDRINUSE' ? 'port already in use' : err.message}`));
+      process.exit(1);
+    });
   });
 
 program.parse();

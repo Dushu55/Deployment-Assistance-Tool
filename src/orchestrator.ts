@@ -28,6 +28,9 @@ import { logger } from './logger.js';
 import { EnvironmentDetector, databaseSummaryLine } from './env.js';
 import { emitAuditStart, emitAuditEnd, summarizeScannerMetrics, AuditContext } from './audit.js';
 import { missingBinaries, isBinaryAvailable } from './utils/preflight.js';
+import { publishReport } from './server/library.js';
+import fs from 'fs';
+import path from 'path';
 import { GcpCloudRunDeployer } from './deployers/gcp.js';
 import { EphemeralDeployment } from './deployers/index.js';
 import { createProvisioner, DbProvisioner, ProvisionedDb } from './deployers/db/provisioner.js';
@@ -141,6 +144,7 @@ export interface DatRunOptions {
   deploy?: boolean; // provision + teardown an ephemeral GCP environment around the scan
   autoFix?: boolean; // opt-in: mutate the working tree with AST auto-fixes (default off for `scan`)
   throwOnFailure?: boolean; // programmatic invocation might not want process.exit(1)
+  publish?: boolean; // copy the HTML report into ~/.dat/reports and print a hosted link (CLI default on)
   auditContext?: AuditContext;
 }
 
@@ -621,6 +625,24 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       componentGraph
     });
     console.log(chalk.gray(`🤖 Fix manifest saved to ${options.fixManifest} (consumable by Claude Code)`));
+  }
+
+  // 11.6 Publish the HTML report to the local ~/.dat/reports library + print a hosted link (CLI
+  // default; `dat serve` hosts it). Off for the GitHub-App path (options.publish unset).
+  if (options.publish === true && options.html && fs.existsSync(options.html)) {
+    try {
+      const url = publishReport({
+        htmlPath: options.html,
+        appName: path.basename(process.cwd()),
+        score,
+        gate: failedGate ? 'fail' : 'pass',
+        summary: report.summary,
+        timestamp: report.timestamp
+      });
+      console.log(chalk.gray(`📰 Report published: ${url}  (run \`dat serve\` to view)`));
+    } catch (e: any) {
+      logger.warn(`Could not publish report to the local library: ${e.message}`);
+    }
   }
 
   emitAuditEnd(executionId, !failedGate, score, totalIssuesFound, summarizeScannerMetrics(deduplicatedResults));

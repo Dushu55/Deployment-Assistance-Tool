@@ -48,6 +48,7 @@ test('NeonProvisioner', async (t) => {
   });
 
   await t.test('omits org_id when not configured', async () => {
+    delete process.env.NEON_ORG_ID; // hermetic: don't inherit an ambient org id from the environment
     let body: any = null;
     const fetchFn = (async (_url: any, init: any) => {
       if (init?.method === 'POST') body = JSON.parse(init.body);
