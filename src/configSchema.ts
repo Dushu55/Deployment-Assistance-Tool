@@ -35,7 +35,7 @@ export const DatConfigSchema = z.object({
       autoProvision: z.boolean().optional(),
       migrateCommand: z.string().optional(),
       seedCommand: z.string().optional(),
-      neon: z.object({ regionId: z.string().optional() }).optional(),
+      neon: z.object({ regionId: z.string().optional(), orgId: z.string().optional() }).optional(),
       cloudsql: z.object({ tier: z.string().optional(), region: z.string().optional() }).optional()
     }).optional(),
     gcp: z.object({

@@ -16,11 +16,14 @@ export class NeonProvisioner implements DbProvisioner {
   readonly name = 'neon';
   private apiKey: string;
   private regionId: string;
+  private orgId: string;
   private fetchFn: FetchFn;
 
-  constructor(opts?: { apiKey?: string; regionId?: string; fetchFn?: FetchFn }) {
+  constructor(opts?: { apiKey?: string; regionId?: string; orgId?: string; fetchFn?: FetchFn }) {
     this.apiKey = opts?.apiKey || process.env.NEON_API_KEY || '';
     this.regionId = opts?.regionId || 'aws-us-east-1';
+    // Org-scoped Neon accounts require org_id on project creation (Account/Org settings page).
+    this.orgId = opts?.orgId || process.env.NEON_ORG_ID || '';
     this.fetchFn = opts?.fetchFn || fetch;
   }
 
@@ -51,7 +54,9 @@ export class NeonProvisioner implements DbProvisioner {
     }
     logger.info('Provisioning ephemeral Neon Postgres project…');
     const name = `dat-ephemeral-${crypto.randomBytes(4).toString('hex')}`;
-    const out = await this.api('/projects', 'POST', { project: { name, region_id: this.regionId } });
+    const project: Record<string, unknown> = { name, region_id: this.regionId };
+    if (this.orgId) project.org_id = this.orgId; // required for org-scoped accounts
+    const out = await this.api('/projects', 'POST', { project });
     const projectId: string | undefined = out?.project?.id;
     const uri: string | undefined = out?.connection_uris?.[0]?.connection_uri;
     if (!projectId || !uri) {

@@ -135,8 +135,9 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
         const yaml = envKeys.map(k => `${k}: ${JSON.stringify(envMap[k])}`).join('\n') + '\n';
         fs.writeFileSync(envFile, yaml, { mode: 0o600 });
         logger.info(`Injecting ${envKeys.length} env var(s) into the preview (build + runtime): ${envKeys.join(', ')}`);
-        // Runtime AND build: many apps (e.g. Next.js prerender) touch the DB during `npm run build`,
-        // which runs in Cloud Build before runtime env applies. Pass the same file to both.
+        // Runtime (--env-vars-file) plus build (--build-env-vars-file). NOTE: build-env-vars reach
+        // BUILDPACK builds, NOT Docker `RUN` steps — so a Dockerfile app that queries the DB during
+        // `next build` must instead avoid build-time DB access (e.g. mark routes force-dynamic).
         cmd += ` --env-vars-file='${envFile}' --build-env-vars-file='${envFile}'`; // single-quoted: path is internal
       }
 

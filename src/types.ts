@@ -106,7 +106,7 @@ export interface DatConfig {
       autoProvision?: boolean;                     // default true when provider is neon/cloudsql
       migrateCommand?: string;                     // override; else auto-detected (prisma/drizzle/…)
       seedCommand?: string;                        // optional seed after migrate
-      neon?: { regionId?: string };                // Neon region (apiKey via NEON_API_KEY env)
+      neon?: { regionId?: string; orgId?: string }; // Neon region + org (apiKey/orgId via NEON_API_KEY/NEON_ORG_ID env)
       cloudsql?: { tier?: string; region?: string }; // Cloud SQL instance tier/region (opt-in, costs)
     };
     gcp?: {

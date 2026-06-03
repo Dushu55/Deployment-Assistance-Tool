@@ -31,7 +31,7 @@ export function createProvisioner(
   if (provider === 'manual') return null;
   if (config?.autoProvision === false) return null;
   if (provider === 'neon') {
-    return new NeonProvisioner({ regionId: config?.neon?.regionId, fetchFn: deps?.fetchFn });
+    return new NeonProvisioner({ regionId: config?.neon?.regionId, orgId: config?.neon?.orgId, fetchFn: deps?.fetchFn });
   }
   if (provider === 'cloudsql') {
     return new CloudSqlProvisioner({
