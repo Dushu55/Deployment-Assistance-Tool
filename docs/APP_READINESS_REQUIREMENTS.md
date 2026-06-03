@@ -38,8 +38,10 @@ tiers here match the readiness ladder DAT prints: ⛔ NOT PRODUCTION-SAFE → �
 
 - **Database** — DAT auto-detects the engine from `prisma/schema.prisma`, `docker-compose.yml`,
   dependency drivers (`pg`, `mysql2`, `mongoose`, …), or a `DATABASE_URL` in `.env`, and prints it
-  in the preflight. For a meaningful dynamic scan the deployed preview needs a **reachable DB** —
-  supply a `DATABASE_URL`, or (roadmap) let DAT provision a free ephemeral one.
+  in the preflight. For a meaningful dynamic scan the deployed preview needs a **reachable DB**.
+  Set `deployer.database.provider: neon` (+ a `NEON_API_KEY`) and DAT **auto-provisions** a throwaway
+  Postgres, migrates it, injects it at build + runtime, and destroys it after the scan — no manual DB
+  setup. Otherwise supply a `DATABASE_URL` in the app's `.env` yourself.
 - **Secrets / env vars** — anything in `.env` the app needs at runtime (auth secrets, API keys).
 - **Build & start** — a working `Dockerfile` (or a buildpack-supported app) and the port it listens on.
 

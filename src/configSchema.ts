@@ -30,10 +30,20 @@ export const DatConfigSchema = z.object({
   deployer: z.object({
     enabled: z.boolean().optional(),
     provider: z.enum(['gcp', 'vercel']).optional(),
+    database: z.object({
+      provider: z.enum(['neon', 'cloudsql', 'manual']).optional(),
+      autoProvision: z.boolean().optional(),
+      migrateCommand: z.string().optional(),
+      seedCommand: z.string().optional(),
+      neon: z.object({ regionId: z.string().optional() }).optional(),
+      cloudsql: z.object({ tier: z.string().optional(), region: z.string().optional() }).optional()
+    }).optional(),
     gcp: z.object({
       projectId: z.string().optional(),
       region: z.string().optional(),
       cloudSqlInstance: z.string().optional(),
+      databaseUrl: z.string().optional(),
+      env: z.record(z.string(), z.string()).optional(),
       cpu: z.string().optional(),
       memory: z.string().optional(),
       maxInstances: z.number().int().positive().optional()

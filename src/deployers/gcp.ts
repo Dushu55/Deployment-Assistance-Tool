@@ -3,6 +3,9 @@ import { logger } from '../logger.js';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import crypto from 'crypto';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 const execAsync = promisify(exec);
 
@@ -12,10 +15,21 @@ export interface GcpDeployerOverrides {
   projectId?: string;
   region?: string;
   cloudSqlInstance?: string;
+  databaseUrl?: string;
+  env?: Record<string, string>;
   cpu?: string;
   memory?: string;
   maxInstances?: number;
   execFn?: ExecFn; // injectable for testing; defaults to child_process exec
+}
+
+// Env var names must be valid shell identifiers; values are written to a YAML file (never the
+// shell), so they may contain any characters (URLs, secrets) without escaping concerns.
+function assertEnvKey(key: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+    throw new Error(`Invalid env var name for GCP deployment: "${key}"`);
+  }
+  return key;
 }
 
 // Allow only shell-safe characters in any value we interpolate into a gcloud command line.
@@ -43,6 +57,10 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
   private dbPass?: string;
   private dbName?: string;
 
+  // Runtime env injected into the preview (DATABASE_URL + any extras the app needs to boot).
+  private databaseUrl?: string;
+  private extraEnv: Record<string, string>;
+
   constructor(overrides?: GcpDeployerOverrides) {
     this.region = overrides?.region || process.env.GCP_REGION || 'us-central1';
     this.projectId = overrides?.projectId || process.env.GCP_PROJECT_ID || '';
@@ -56,6 +74,21 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
     this.dbUser = process.env.DB_USER || 'postgres';
     this.dbPass = process.env.DB_PASS || 'password';
     this.dbName = process.env.DB_NAME || 'dat_testing_db';
+
+    this.databaseUrl = overrides?.databaseUrl || process.env.DATABASE_URL;
+    this.extraEnv = overrides?.env || {};
+  }
+
+  /** Collect all runtime env to inject into the preview (DATABASE_URL + Cloud SQL DB_* + extras). */
+  private buildEnvMap(): Record<string, string> {
+    const env: Record<string, string> = {};
+    if (this.sqlInstance) {
+      env.DB_USER = this.dbUser!; env.DB_PASS = this.dbPass!;
+      env.DB_NAME = this.dbName!; env.DB_HOST = `/cloudsql/${this.sqlInstance}`;
+    }
+    if (this.databaseUrl) env.DATABASE_URL = this.databaseUrl;
+    for (const [k, v] of Object.entries(this.extraEnv)) env[assertEnvKey(k)] = v;
+    return env;
   }
 
   async deployBranch(branch: string, commitSha?: string): Promise<EphemeralDeployment> {
@@ -70,6 +103,9 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
 
     logger.info(`Triggering GCP Cloud Run ephemeral deployment for branch: ${branch} (Service: ${serviceName})`);
 
+    // Runtime env (DATABASE_URL, Cloud SQL DB_*, extras) is written to a temp YAML file and passed
+    // via --env-vars-file — values never touch the shell, so URLs/secrets need no escaping.
+    let envFile: string | undefined;
     try {
       // Build the command.
       //  - --no-allow-unauthenticated: enforce IAM security (no public endpoint).
@@ -84,12 +120,24 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
         cmd += ` --project ${projectId}`;
       }
 
-      // Inject Database Connectivity only if explicitly configured (Cloud SQL adds cost).
+      // Link Cloud SQL only if explicitly configured (Cloud SQL adds cost).
       if (this.sqlInstance) {
         const sqlInstance = safeArg(this.sqlInstance, 'cloudSqlInstance');
         logger.info(`Linking Cloud SQL instance: ${sqlInstance}`);
         cmd += ` --add-cloudsql-instances=${sqlInstance}`;
-        cmd += ` --set-env-vars=DB_USER=${this.dbUser},DB_PASS=${this.dbPass},DB_NAME=${this.dbName},DB_HOST=/cloudsql/${sqlInstance}`;
+      }
+
+      // Inject runtime env via a temp YAML file (handles DATABASE_URL's @ / ? / & safely).
+      const envMap = this.buildEnvMap();
+      const envKeys = Object.keys(envMap);
+      if (envKeys.length > 0) {
+        envFile = path.join(os.tmpdir(), `dat-env-${crypto.randomBytes(6).toString('hex')}.yaml`);
+        const yaml = envKeys.map(k => `${k}: ${JSON.stringify(envMap[k])}`).join('\n') + '\n';
+        fs.writeFileSync(envFile, yaml, { mode: 0o600 });
+        logger.info(`Injecting ${envKeys.length} env var(s) into the preview (build + runtime): ${envKeys.join(', ')}`);
+        // Runtime AND build: many apps (e.g. Next.js prerender) touch the DB during `npm run build`,
+        // which runs in Cloud Build before runtime env applies. Pass the same file to both.
+        cmd += ` --env-vars-file='${envFile}' --build-env-vars-file='${envFile}'`; // single-quoted: path is internal
       }
 
       logger.info(`Building and deploying to GCP Cloud Run (scale-to-zero, ${cpu} CPU / ${memory}, max ${this.maxInstances} instance(s))... (This may take 1-3 minutes)`);
@@ -125,6 +173,11 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
     } catch (error: any) {
       logger.error(`Failed to trigger GCP deployment: ${error.message}`);
       throw error;
+    } finally {
+      // The env file held the build-time DATABASE_URL/secrets — remove it once the deploy submits.
+      if (envFile) {
+        try { fs.unlinkSync(envFile); } catch { /* best effort */ }
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
+import fs from 'fs';
 import { GcpCloudRunDeployer, ExecFn } from './gcp.js';
 
 // Build an exec stub that records every command and responds based on command content.
@@ -40,6 +41,46 @@ test('GcpCloudRunDeployer.deployBranch', async (t) => {
     assert.match(deployCmd, /--project dat-tool/);
     // Cloud SQL must NOT be linked unless explicitly configured (cost).
     assert.ok(!deployCmd.includes('--add-cloudsql-instances'));
+    // No runtime env configured → no env file injected.
+    assert.ok(!deployCmd.includes('--env-vars-file'));
+  });
+
+  await t.test('injects DATABASE_URL (with @ ? & chars) via a temp --env-vars-file', async () => {
+    let envFileContent = '';
+    let envFilePath = '';
+    const execFn: ExecFn = async (cmd: string) => {
+      if (cmd.includes('print-identity-token')) return { stdout: 'tok', stderr: '' };
+      if (cmd.includes('run deploy')) {
+        const m = cmd.match(/--env-vars-file='([^']+)'/);
+        assert.ok(m, 'deploy cmd should pass --env-vars-file');
+        envFilePath = m![1];
+        envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        return { stdout: JSON.stringify({ status: { url: 'https://svc.run.app' } }), stderr: '' };
+      }
+      return { stdout: '', stderr: '' };
+    };
+    const url = 'postgres://u:p@h:5432/db?sslmode=require&x=1';
+    let deployCmd = '';
+    const recordingExec: ExecFn = async (cmd: string) => {
+      if (cmd.includes('run deploy')) deployCmd = cmd;
+      return execFn(cmd);
+    };
+    const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', databaseUrl: url, env: { NEXTAUTH_SECRET: 'abc' }, execFn: recordingExec });
+    await d.deployBranch('main');
+    // Value is JSON-quoted in YAML, so special chars survive intact.
+    assert.match(envFileContent, /DATABASE_URL: "postgres:\/\/u:p@h:5432\/db\?sslmode=require&x=1"/);
+    assert.match(envFileContent, /NEXTAUTH_SECRET: "abc"/);
+    // Injected at BOTH runtime and build time (next build needs the DB).
+    assert.match(deployCmd, /--env-vars-file=/);
+    assert.match(deployCmd, /--build-env-vars-file=/);
+    // Temp file is cleaned up after the deploy.
+    assert.ok(!fs.existsSync(envFilePath), 'env file should be removed after deploy');
+  });
+
+  await t.test('rejects invalid env var names (injection guard)', async () => {
+    const { execFn } = recorder({});
+    const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', env: { 'BAD NAME': 'x' }, execFn });
+    await assert.rejects(() => d.deployBranch('main'), /Invalid env var name/);
   });
 
   await t.test('honours constructor overrides over defaults', async () => {
