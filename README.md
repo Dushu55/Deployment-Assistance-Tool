@@ -41,6 +41,27 @@ node dist/index.js scan --profile standard --html results/report.html --fix-mani
 
 Exit code `0` = quality gate passed, `1` = failed. Pick breadth with `--profile quick|standard|security|full`.
 
+## Use `dat` from any project + host reports locally
+
+Install the CLI globally once, then run it from any application's directory and browse every scan's
+report at a local URL:
+
+```bash
+npm run build && npm link          # exposes a global `dat` command
+
+dat serve                          # one terminal: hosts reports at http://localhost:4737 (loopback only)
+
+cd /path/to/your/app && dat scan   # any other terminal: scans, then prints a link:
+#   📰 Report published: http://localhost:4737/r/<app>-<timestamp>.html
+```
+
+Each scan auto-publishes its HTML report into a private library at `~/.dat/reports/` (owner-only
+`0600`/`0700`, outside any git repo) and the server lists them at `http://localhost:4737`. Only the
+**127.0.0.1** loopback is bound (not your LAN), only the self-contained HTML is served (never the
+fix-manifest/SARIF), and the **100** most recent reports are kept (older ones are deleted). Use
+`dat scan --no-publish` to keep a scan out of the library, `dat serve --port <n>` (or `DAT_PORT`) to
+change the port, and `DAT_HOME` to relocate the library.
+
 ## Documentation
 
 | Doc | What |

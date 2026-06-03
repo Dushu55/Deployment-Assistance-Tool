@@ -1,0 +1,72 @@
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { reportsDir, readManifest, serverPort, ReportEntry } from './library.js';
+
+function esc(s: unknown): string {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+function renderIndex(entries: ReportEntry[]): string {
+  const rows = entries.map(e => {
+    const badge = e.gate === 'pass'
+      ? '<span style="color:#137333;font-weight:600">PASS</span>'
+      : '<span style="color:#c5221f;font-weight:600">FAIL</span>';
+    const s = e.summary || { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+    return `<tr><td><a href="/r/${esc(e.file)}">${esc(e.appName)}</a></td>` +
+      `<td>${esc(e.timestamp)}</td><td>${badge}</td><td>${esc(e.score)}/100</td>` +
+      `<td>${esc(s.critical)}C / ${esc(s.high)}H / ${esc(s.medium)}M / ${esc(s.low)}L</td></tr>`;
+  }).join('');
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>DAT Reports</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;margin:2rem;color:#202124}
+h1{font-size:1.4rem}table{border-collapse:collapse;width:100%;margin-top:1rem}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid #eee}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#80868b}
+a{color:#1a73e8;text-decoration:none}a:hover{text-decoration:underline}.muted{color:#80868b;font-weight:400;font-size:.9rem}</style>
+</head><body><h1>🛡️ DAT Reports <span class="muted">(local · ${entries.length})</span></h1>${
+    entries.length === 0
+      ? '<p class="muted">No reports yet. Run <code>dat scan</code> in an application directory.</p>'
+      : `<table><thead><tr><th>Application</th><th>When</th><th>Gate</th><th>Score</th><th>Findings</th></tr></thead><tbody>${rows}</tbody></table>`
+  }</body></html>`;
+}
+
+const VALID_FILE = /^[A-Za-z0-9._-]+\.html$/;
+
+/** Pure request handler (no listener) so it can be unit-tested with mock req/res. */
+export function createReportHandler() {
+  return (req: http.IncomingMessage, res: http.ServerResponse): void => {
+    if (req.method !== 'GET') { res.writeHead(405, { 'Content-Type': 'text/plain' }); res.end('Method Not Allowed'); return; }
+    const pathname = decodeURIComponent(new URL(req.url || '/', 'http://localhost').pathname);
+
+    if (pathname === '/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(renderIndex(readManifest()));
+      return;
+    }
+    if (pathname === '/index.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(readManifest(), null, 2));
+      return;
+    }
+    if (pathname.startsWith('/r/')) {
+      const dir = reportsDir();
+      const name = path.basename(pathname.slice(3));          // strip any path components (traversal)
+      const full = path.join(dir, name);
+      // Serve ONLY *.html that actually live inside the reports dir — never SARIF/fix-manifest/etc.
+      if (VALID_FILE.test(name) && full.startsWith(dir + path.sep) && fs.existsSync(full)) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        fs.createReadStream(full).pipe(res);
+        return;
+      }
+    }
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
+  };
+}
+
+/** Start the local report server, bound to loopback only (127.0.0.1). */
+export function startReportServer(port: number = serverPort()): http.Server {
+  const server = http.createServer(createReportHandler());
+  server.listen(port, '127.0.0.1');
+  return server;
+}
