@@ -36,6 +36,28 @@ test('NeonProvisioner', async (t) => {
     assert.ok(calls.some(c => c.method === 'DELETE' && c.url.endsWith('/projects/proj-abc')));
   });
 
+  await t.test('includes org_id in the create body when configured (org-scoped accounts)', async () => {
+    let body: any = null;
+    const fetchFn = (async (_url: any, init: any) => {
+      if (init?.method === 'POST') body = JSON.parse(init.body);
+      return new Response(JSON.stringify({ project: { id: 'p1' }, connection_uris: [{ connection_uri: 'postgres://x' }] }), { status: 201 });
+    }) as unknown as typeof fetch;
+    const p = new NeonProvisioner({ apiKey: 'k', orgId: 'org-xyz', fetchFn });
+    await p.provision('postgres');
+    assert.strictEqual(body.project.org_id, 'org-xyz');
+  });
+
+  await t.test('omits org_id when not configured', async () => {
+    let body: any = null;
+    const fetchFn = (async (_url: any, init: any) => {
+      if (init?.method === 'POST') body = JSON.parse(init.body);
+      return new Response(JSON.stringify({ project: { id: 'p1' }, connection_uris: [{ connection_uri: 'postgres://x' }] }), { status: 201 });
+    }) as unknown as typeof fetch;
+    const p = new NeonProvisioner({ apiKey: 'k', fetchFn });
+    await p.provision('postgres');
+    assert.ok(!('org_id' in body.project));
+  });
+
   await t.test('refuses non-postgres engines', async () => {
     const { fetchFn } = neonStub();
     const p = new NeonProvisioner({ apiKey: 'k', fetchFn });
