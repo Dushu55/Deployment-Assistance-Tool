@@ -8,9 +8,11 @@ import { EnvironmentDetector } from './env.js';
 //  - critical:       fix before production (active vuln / unverified logic / supply chain)
 //  - highly-advised: enterprise-grade gaps attackers exploit (infra, ecosystem CVEs, container CIS)
 //  - best-practice:  maturity gaps (everything not listed below falls here)
-export const DEFAULT_CRITICAL: InputCategory[] = ['dockerfile', 'testSuite', 'dastTarget', 'datConfig', 'deps'];
+// NOTE: `datConfig` (.dat.config.yaml) is DAT's OWN config — its absence only means default policy
+// applies (DAT still scans fully), so it is a best-practice nudge, NOT a production-safety gate.
+export const DEFAULT_CRITICAL: InputCategory[] = ['dockerfile', 'testSuite', 'dastTarget', 'deps'];
 export const DEFAULT_HIGHLY_ADVISED: InputCategory[] = ['iac', 'lockfile', 'image'];
-export const DEFAULT_BEST_PRACTICE: InputCategory[] = ['promptfoo', 'apiTests'];
+export const DEFAULT_BEST_PRACTICE: InputCategory[] = ['datConfig', 'promptfoo', 'apiTests'];
 
 // Backward-compatible alias: the "required" tier == critical (gates preflight --strict).
 export const DEFAULT_REQUIRED: InputCategory[] = DEFAULT_CRITICAL;

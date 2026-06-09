@@ -20,7 +20,7 @@ function tmp(files: Record<string, string>): string {
 const cfg: DatConfig = { scanners: {} as any, failOn: ['CRITICAL', 'HIGH'], profile: 'security' };
 
 test('checkReadiness', async (t) => {
-  await t.test('bare app: critical inputs (config, DAST target) reported missing -> not production-safe', async () => {
+  await t.test('bare app: critical inputs (DAST target, Dockerfile, tests) reported missing -> not production-safe', async () => {
     const dir = tmp({ 'package.json': '{"name":"x"}' }); // node, but no Dockerfile/tests/url/config
     const r = await checkReadiness(cfg, { configPath: '.dat.config.yaml', workspaceRoot: dir });
     fs.rmSync(dir, { recursive: true, force: true });
@@ -63,5 +63,18 @@ test('checkReadiness', async (t) => {
     // Checkov's IaC (highly-advised) is absent -> production-safe, not enterprise-grade.
     assert.strictEqual(r.readinessLevel, 'production-safe');
     assert.ok(r.highlyAdvisedMissing > 0);
+  });
+
+  await t.test('missing .dat.config.yaml is best-practice, never a production-safety gate', async () => {
+    // Everything genuinely production-relevant is present (Dockerfile, tests, deps, DAST target via
+    // url); only DAT's OWN config file is absent. That must NOT make the app "not production-safe".
+    const dir = tmp({ 'package.json': '{"scripts":{"test":"x"}}', 'Dockerfile': 'FROM node' });
+    const r = await checkReadiness(cfg, { configPath: '.dat.config.yaml', workspaceRoot: dir, url: 'https://app.example.com' });
+    fs.rmSync(dir, { recursive: true, force: true });
+    assert.strictEqual(r.datConfigPresent, false);
+    assert.strictEqual(r.datConfigRequired, false, 'datConfig must no longer be a required/critical input');
+    assert.strictEqual(r.criticalMissing, 0, `no critical gaps when only the config is absent, got ${r.criticalMissing}`);
+    assert.notStrictEqual(r.readinessLevel, 'not-production-safe');
+    assert.ok(r.bestPracticeMissing > 0, 'a missing .dat.config.yaml should count toward best-practice');
   });
 });

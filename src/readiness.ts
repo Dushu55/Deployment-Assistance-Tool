@@ -23,9 +23,10 @@ export interface ScannerReadiness {
 }
 export interface ReadinessReport {
   datConfigPresent: boolean;
-  datConfigRequired: boolean;
+  datConfigRequired: boolean;    // back-compat: true iff datConfigTier === 'critical'
+  datConfigTier: InputTier;      // the resolved tier of .dat.config.yaml (best-practice by default)
   scanners: ScannerReadiness[];
-  criticalMissing: number;       // distinct critical-tier categories missing (incl. .dat.config.yaml)
+  criticalMissing: number;       // distinct critical-tier categories missing
   highlyAdvisedMissing: number;  // distinct highly-advised categories missing
   bestPracticeMissing: number;   // distinct best-practice categories missing
   requiredMissing: number;       // alias of criticalMissing (back-compat: --strict gate)
@@ -77,7 +78,9 @@ export async function checkReadiness(config: DatConfig, opts: ReadinessOptions):
     }
   }
 
-  // Top-level: the target app's own .dat.config.yaml (critical tier by default).
+  // Top-level: the target app's own .dat.config.yaml (best-practice tier by default — it customizes
+  // DAT's policy but its absence is not a production-safety gap; defaults apply. An operator can
+  // re-elevate it via `preflight.required` in config).
   const datConfigPresent = fs.existsSync(path.resolve(workspaceRoot, opts.configPath));
   const datConfigTier = inputTier('datConfig', critical, highlyAdvised);
   const datConfigRequired = datConfigTier === 'critical';
@@ -95,6 +98,7 @@ export async function checkReadiness(config: DatConfig, opts: ReadinessOptions):
   return {
     datConfigPresent,
     datConfigRequired,
+    datConfigTier,
     scanners,
     criticalMissing,
     highlyAdvisedMissing,
@@ -134,10 +138,14 @@ export function printReadiness(report: ReadinessReport): void {
     }
   }
   if (!report.datConfigPresent) {
-    const tier: InputTier = report.datConfigRequired ? 'critical' : 'best-practice';
+    // Use the resolved tier (best-practice by default; an operator can re-elevate it via
+    // preflight.required / preflight.highlyAdvised) so the printed line matches the readiness counts.
+    const tier = report.datConfigTier;
+    const consequence = tier === 'best-practice'
+      ? 'Optional: add one to customize org policy, severity thresholds and scanner selection; safe defaults apply without it.'
+      : 'Your policy marks this required — add one to pin org policy, severity thresholds and scanner selection (defaults apply until then).';
     missing.set('datConfig', {
-      tier, label: '.dat.config.yaml', scanners: ['DAT config'],
-      consequence: 'Org policy, severity thresholds and scanner selection fall back to defaults.'
+      tier, label: '.dat.config.yaml', scanners: ['DAT config'], consequence
     });
   }
 
