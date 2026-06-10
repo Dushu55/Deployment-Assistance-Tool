@@ -77,6 +77,31 @@ export function emitAuditStart(context: AuditContext, configPath: string): strin
 }
 
 /**
+ * Every infrastructure mutation DAT performs (provision/migrate/teardown of an ephemeral DB,
+ * Cloud Run service, or container image) is logged as a structured INFRA_MUTATION audit event so
+ * the full lifecycle — and any leaked resource — is traceable from the logs.
+ */
+export type InfraAction =
+  | 'DB_PROVISION' | 'DB_MIGRATE' | 'DB_TEARDOWN'
+  | 'DEPLOY_CREATE' | 'DEPLOY_READY' | 'DEPLOY_TEARDOWN'
+  | 'IMAGE_TEARDOWN';
+
+export function emitInfraEvent(
+  action: InfraAction,
+  status: 'START' | 'OK' | 'FAIL' | 'SKIP',
+  detail: Record<string, unknown> = {},
+): void {
+  const level = status === 'FAIL' ? 'error' : 'info';
+  logger.log(level, `INFRA_EVENT: ${action} ${status}`, {
+    auditEvent: 'INFRA_MUTATION',
+    action,
+    status,
+    timestamp: new Date().toISOString(),
+    ...detail,
+  });
+}
+
+/**
  * Emits a structured AUDIT_END event detailing the exact outcomes.
  */
 export function emitAuditEnd(executionId: string, success: boolean, score: number, issuesFound: number, metrics?: ScannerMetrics) {

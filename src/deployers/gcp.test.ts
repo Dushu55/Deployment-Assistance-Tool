@@ -126,4 +126,47 @@ test('GcpCloudRunDeployer.teardown', async (t) => {
     const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', execFn });
     await assert.doesNotReject(() => d.teardown('dat-ephemeral-x'));
   });
+
+  await t.test('deletes the image even when the service delete fails (independent steps)', async () => {
+    const { calls, execFn } = recorder({ reject: /services delete/ });
+    const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', execFn });
+    await d.teardown('dat-ephemeral-x');
+    assert.ok(calls.some(c => c.includes('artifacts docker images delete')), 'image cleanup must still run');
+  });
+
+  await t.test('treats an already-gone service as success (idempotent) and still cleans the image', async () => {
+    const calls: string[] = [];
+    const execFn = async (cmd: string) => {
+      calls.push(cmd);
+      if (cmd.includes('services delete')) throw new Error('ERROR: Cannot find service [x]. NOT_FOUND');
+      return { stdout: '', stderr: '' };
+    };
+    const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', execFn });
+    await assert.doesNotReject(() => d.teardown('dat-ephemeral-x'));
+    assert.ok(calls.some(c => c.includes('artifacts docker images delete')));
+  });
+});
+
+test('GcpCloudRunDeployer teardown robustness', async (t) => {
+  await t.test('self-cleans the created service when a post-deploy step throws', async () => {
+    // deploy succeeds, but the identity-token step fails (a user account can't mint one) — the
+    // service that was already created must be torn down, not leaked.
+    const { calls, execFn } = recorder({ reject: /print-identity-token/ });
+    const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', execFn });
+    await assert.rejects(() => d.deployBranch('main'), /IAM token/);
+    assert.ok(
+      calls.some(c => /run services delete dat-ephemeral-[0-9a-f]{8}/.test(c)),
+      'a service created before the failure must be torn down',
+    );
+    assert.strictEqual(d.activeServiceName, undefined, 'tracked service cleared after self-cleanup');
+  });
+
+  await t.test('tracks the active service name on success and clears it after teardown', async () => {
+    const { execFn } = recorder({ token: 't' });
+    const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', execFn });
+    const dep = await d.deployBranch('main');
+    assert.strictEqual(d.activeServiceName, dep.id, 'service name tracked after a successful deploy');
+    await d.teardown(dep.id);
+    assert.strictEqual(d.activeServiceName, undefined, 'tracked service cleared after teardown');
+  });
 });

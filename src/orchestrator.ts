@@ -26,7 +26,7 @@ import { activeProcesses } from './runner.js';
 import { AstGrepAutoFixer } from './autofix/index.js';
 import { logger } from './logger.js';
 import { EnvironmentDetector, databaseSummaryLine } from './env.js';
-import { emitAuditStart, emitAuditEnd, summarizeScannerMetrics, AuditContext } from './audit.js';
+import { emitAuditStart, emitAuditEnd, summarizeScannerMetrics, AuditContext, emitInfraEvent } from './audit.js';
 import { missingBinaries, isBinaryAvailable } from './utils/preflight.js';
 import { publishReport } from './server/library.js';
 import fs from 'fs';
@@ -343,11 +343,32 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
   let deployer: GcpCloudRunDeployer | undefined;
   let provisioner: DbProvisioner | null = null;
   let provisionedDb: ProvisionedDb | undefined;
+  let removeSignalHandlers: (() => void) | undefined;
   const deployRequested = options.deploy || config.deployer?.enabled === true;
   if (deployRequested && !options.url) {
     if (!(await isBinaryAvailable('gcloud'))) {
       throw new Error('--deploy requires the gcloud CLI to be installed and authenticated (run `gcloud auth login`).');
     }
+
+    // `finally` does NOT run on SIGINT/SIGTERM, so an interrupt mid-deploy would orphan paid
+    // resources. Install best-effort signal handlers that tear down whatever exists, then exit.
+    let cleaningUp = false;
+    const emergencyCleanup = (signal: string) => {
+      if (cleaningUp) return;
+      cleaningUp = true;
+      logger.warn(`Received ${signal} mid-deploy — tearing down ephemeral resources before exit.`);
+      const svc = deployer?.activeServiceName;
+      const dbHandle = provisionedDb?.handle;
+      Promise.allSettled([
+        deployer && svc ? deployer.teardown(svc) : Promise.resolve(),
+        provisioner && dbHandle ? provisioner.teardown(dbHandle) : Promise.resolve(),
+      ]).finally(() => process.exit(130));
+    };
+    const onSigint = () => emergencyCleanup('SIGINT');
+    const onSigterm = () => emergencyCleanup('SIGTERM');
+    process.once('SIGINT', onSigint);
+    process.once('SIGTERM', onSigterm);
+    removeSignalHandlers = () => { process.off('SIGINT', onSigint); process.off('SIGTERM', onSigterm); };
 
     // Auto-provision an ephemeral database when configured and the app uses one, so a DB-backed
     // app boots for DAST with zero manual DB setup. Migrate it, then hand the URL to the deployer
@@ -358,14 +379,17 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
       try {
         console.log(chalk.cyan(`\n🗄️  Auto-provisioning an ephemeral ${engine} database (${provisioner.name})...`));
         provisionedDb = await provisioner.provision(engine);
+        emitInfraEvent('DB_PROVISION', 'OK', { provider: provisioner.name, engine, handle: provisionedDb.handle });
         const migrated = await runMigrations({
           workspaceRoot: process.cwd(),
           databaseUrl: provisionedDb.databaseUrl,
           migrateCommand: config.deployer?.database?.migrateCommand,
           seedCommand: config.deployer?.database?.seedCommand
         });
+        emitInfraEvent('DB_MIGRATE', migrated ? 'OK' : 'SKIP', { provider: provisioner.name });
         console.log(chalk.gray(migrated ? '🗄️  Database provisioned and migrated.' : '🗄️  Database provisioned (migrations skipped/failed — see logs).'));
       } catch (err: any) {
+        emitInfraEvent('DB_PROVISION', 'FAIL', { provider: provisioner?.name, error: err.message });
         console.log(chalk.yellow(`⚠️  Database auto-provisioning failed: ${err.message}. Continuing without an auto-provisioned DB.`));
         provisionedDb = undefined;
       }
@@ -653,20 +677,31 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
 
   return { report, failedGate };
   } finally {
-    // Guarantee teardown of the ephemeral environment on every exit path (success, gate
-    // failure, or unexpected error) so a paid Cloud Run service is never left running.
-    if (ephemeralDeployment && deployer) {
+    // Guarantee teardown on every exit path (success, gate failure, or unexpected error) so a paid
+    // Cloud Run service is never left running. Prefer the returned deployment id, but fall back to
+    // the deployer's tracked service name — so a service whose `deployBranch` created it and then
+    // THREW (handle never returned) is still cleaned up. teardown is idempotent, so this is safe even
+    // if deployBranch already self-cleaned.
+    const serviceToTear = ephemeralDeployment?.id ?? deployer?.activeServiceName;
+    if (deployer && serviceToTear) {
       try {
-        await deployer.teardown(ephemeralDeployment.id);
+        await deployer.teardown(serviceToTear);
         console.log(chalk.gray('☁️  Ephemeral environment torn down.'));
       } catch (e: any) {
-        logger.error(`Teardown failed for ${ephemeralDeployment.id}: ${e.message}`);
+        logger.error(`Teardown failed for ${serviceToTear}: ${e.message}`);
       }
     }
     // Destroy the auto-provisioned database too (even if the deploy itself failed).
     if (provisionedDb && provisioner) {
-      await provisioner.teardown(provisionedDb.handle); // never throws
-      console.log(chalk.gray('🗄️  Ephemeral database torn down.'));
+      try {
+        await provisioner.teardown(provisionedDb.handle); // never throws, but guard anyway
+        emitInfraEvent('DB_TEARDOWN', 'OK', { provider: provisioner.name, handle: provisionedDb.handle });
+        console.log(chalk.gray('🗄️  Ephemeral database torn down.'));
+      } catch (e: any) {
+        emitInfraEvent('DB_TEARDOWN', 'FAIL', { provider: provisioner.name, handle: provisionedDb.handle, error: e.message });
+        logger.error(`Database teardown failed: ${e.message}`);
+      }
     }
+    if (removeSignalHandlers) removeSignalHandlers();
   }
 }
