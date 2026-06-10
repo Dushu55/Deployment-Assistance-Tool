@@ -7,6 +7,7 @@ import { serveReportFile } from './serve.js';
 import { renderUiHtml } from './uiHtml.js';
 import { maskedOperatorEnv, writeOperatorEnv } from './operatorEnv.js';
 import { startScan, getRun, type ScanEvent } from './scanRunner.js';
+import { buildSecretsPlan } from './secretsPlan.js';
 import { loadConfig } from '../config.js';
 import { checkReadiness } from '../readiness.js';
 import { getEnabledScanners } from '../orchestrator.js';
@@ -16,15 +17,18 @@ import { isProfileName } from '../profiles.js';
 import type { InputCategory, InputTier, ProfileName } from '../types.js';
 
 // Copy-paste install hints for the external tools DAT shells out to.
+// Python-based tools use pipx (Homebrew's Python is PEP 668 externally-managed, so plain `pip
+// install` is blocked). cover-agent is NOT on PyPI — it ships as a GitHub release binary.
 const INSTALL_HINTS: Record<string, string> = {
   semgrep: 'brew install semgrep', trivy: 'brew install trivy', gitleaks: 'brew install gitleaks',
-  hadolint: 'brew install hadolint', dockle: 'brew install dockle', checkov: 'pip install checkov',
+  hadolint: 'brew install hadolint', dockle: 'brew install dockle', checkov: 'pipx install checkov',
   'osv-scanner': 'brew install osv-scanner', 'sonar-scanner': 'brew install sonar-scanner',
-  bandit: 'pip install bandit', 'pip-audit': 'pip install pip-audit', gosec: 'brew install gosec',
+  bandit: 'pipx install bandit', 'pip-audit': 'pipx install pip-audit', gosec: 'brew install gosec',
   govulncheck: 'go install golang.org/x/vuln/cmd/govulncheck@latest', cargo: 'install Rust (rustup)',
   dotnet: 'install the .NET SDK', mvn: 'install Maven', gradle: 'install Gradle', k6: 'brew install k6',
   keploy: 'see keploy.io/docs/install', python3: 'install Python 3', docker: 'install Docker Desktop',
-  gcloud: 'brew install --cask google-cloud-sdk', 'cover-agent': 'pip install cover-agent',
+  gcloud: 'brew install --cask google-cloud-sdk',
+  'cover-agent': 'download cover-agent-<os> from github.com/qodo-ai/qodo-cover/releases',
 };
 
 interface ToolStatus { binary: string; present: boolean; hint?: string; }
@@ -226,11 +230,41 @@ export function createUiHandler(token: string) {
           json(res, 200, { ok: true, settings: maskedOperatorEnv() });
           return;
         }
+        if (req.method === 'GET' && pathname === '/api/secrets-plan') {
+          const q = new URL(req.url || '/', 'http://localhost').searchParams;
+          const target = resolveTarget(q.get('path'));
+          const profRaw = q.get('profile') || undefined;
+          const profile = profRaw && isProfileName(profRaw) ? profRaw : undefined;
+          json(res, 200, buildSecretsPlan(target, { deploy: q.get('deploy') === '1', url: q.get('url') || undefined, profile }));
+          return;
+        }
         if (req.method === 'POST' && pathname === '/api/scan') {
-          const body = (await readJsonBody(req)) as { path?: string; profile?: string; url?: string; deploy?: boolean };
+          const body = (await readJsonBody(req)) as {
+            path?: string; profile?: string; url?: string; deploy?: boolean; appSecrets?: Record<string, unknown>;
+          };
           const target = resolveTarget(body.path);
           const profile = body.profile && isProfileName(body.profile) ? body.profile : undefined;
-          const runId = startScan({ target, profile, url: body.url || undefined, deploy: body.deploy === true });
+          const url = body.url || undefined;
+          const deploy = body.deploy === true;
+
+          // For a deploy run, assemble the ephemeral app env: user-entered values for the genuine
+          // third-party ('required') keys, plus a freshly generated value for each auth secret.
+          // The DB ('auto-db') is left to DAT's provisioner; 'config' keys to the deploy defaults.
+          let appSecrets: Record<string, string> | undefined;
+          if (deploy) {
+            appSecrets = {};
+            const provided = (body.appSecrets && typeof body.appSecrets === 'object') ? body.appSecrets : {};
+            for (const k of buildSecretsPlan(target, { deploy, url, profile }).appSecrets) {
+              if (k.kind === 'required') {
+                const v = provided[k.key];
+                if (typeof v === 'string' && v) appSecrets[k.key] = v;
+              } else if (k.kind === 'auto-auth') {
+                appSecrets[k.key] = crypto.randomBytes(32).toString('base64');
+              }
+            }
+          }
+
+          const runId = startScan({ target, profile, url, deploy, appSecrets });
           json(res, 200, { runId });
           return;
         }

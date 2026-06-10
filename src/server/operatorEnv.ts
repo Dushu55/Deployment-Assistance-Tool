@@ -38,12 +38,20 @@ export function readOperatorEnv(): Record<string, string> {
   return out;
 }
 
-export interface OperatorSetting { key: string; set: boolean; }
+export interface OperatorSetting { key: string; set: boolean; source: 'store' | 'env' | null }
 
-/** Which known credentials are currently set — never returns the values themselves. */
+/**
+ * Which known credentials are currently set, and from where — checking BOTH `~/.dat/.env` (the
+ * UI-managed store) and `process.env` (DAT loads its repo .env into process.env at import, so creds
+ * an operator already configured there count). Never returns the values themselves.
+ */
 export function maskedOperatorEnv(): OperatorSetting[] {
-  const env = readOperatorEnv();
-  return OPERATOR_ENV_KEYS.map((key) => ({ key, set: Boolean(env[key]) }));
+  const store = readOperatorEnv();
+  return OPERATOR_ENV_KEYS.map((key) => {
+    if (store[key]) return { key, set: true, source: 'store' };
+    if (process.env[key]) return { key, set: true, source: 'env' };
+    return { key, set: false, source: null };
+  });
 }
 
 /**

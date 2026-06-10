@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readOperatorEnv } from './operatorEnv.js';
+import { gcloudStatus } from './gcloud.js';
 
 /**
  * Runs `dat scan` as a child process and turns its stdout into a stream of structured events the UI
@@ -64,6 +65,8 @@ export interface StartScanOptions {
   profile?: string;
   url?: string;
   deploy?: boolean;
+  /** App-owner runtime secrets for a --deploy run: injected into the child env, never persisted. */
+  appSecrets?: Record<string, string>;
 }
 
 export function startScan(opts: StartScanOptions): string {
@@ -78,10 +81,15 @@ export function startScan(opts: StartScanOptions): string {
   if (opts.url) args.push('--url', opts.url);
   else if (opts.deploy) args.push('--deploy');
 
-  const child = spawn(process.execPath, args, {
-    env: { ...process.env, ...readOperatorEnv() },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  // Env precedence: process env < operator creds (~/.dat/.env) < this run's ephemeral app secrets.
+  const childEnv: NodeJS.ProcessEnv = { ...process.env, ...readOperatorEnv(), ...(opts.appSecrets ?? {}) };
+  // The GCP deployer reads the project only from GCP_PROJECT_ID; operators usually set it via
+  // `gcloud config set project`, so derive it from gcloud when absent for a deploy run.
+  if (opts.deploy && !childEnv.GCP_PROJECT_ID && !childEnv.GOOGLE_CLOUD_PROJECT) {
+    const project = gcloudStatus().project;
+    if (project) childEnv.GCP_PROJECT_ID = project;
+  }
+  const child = spawn(process.execPath, args, { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
 
   const push = (e: ScanEvent) => { run.events.push(e); emitter.emit('event', e); };
 

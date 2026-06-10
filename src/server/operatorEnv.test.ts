@@ -32,6 +32,14 @@ test('operatorEnv read/write/mask', async (t) => {
     assert.ok(!('value' in (neon as object)), 'masked settings must not include the value');
   });
 
+  await t.test('detects a credential from process.env (source=env)', () => {
+    process.env.SONAR_TOKEN = 'from-process-env';
+    const sonar = maskedOperatorEnv().find((m) => m.key === 'SONAR_TOKEN');
+    assert.strictEqual(sonar?.set, true);
+    assert.strictEqual(sonar?.source, 'env');
+    delete process.env.SONAR_TOKEN;
+  });
+
   await t.test('empty value deletes the key, others preserved', () => {
     writeOperatorEnv({ NEON_API_KEY: '' });
     const env = readOperatorEnv();

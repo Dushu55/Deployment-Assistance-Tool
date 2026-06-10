@@ -132,6 +132,13 @@ export function renderUiHtml(): string {
     </div>
   </div>
 
+  <div id="dastPanel" class="card hidden">
+    <h2>3b · Dynamic scan setup</h2>
+    <div id="dastNotes" class="hint"></div>
+    <div id="operatorNeeds"></div>
+    <div id="appSecrets"></div>
+  </div>
+
   <div id="cmd" class="card hidden">
     <h2>4 · Run it</h2>
     <div class="btnrow">
@@ -187,10 +194,10 @@ export function renderUiHtml(): string {
 
   $('dast').addEventListener('change', function(){
     $('urlWrap').classList.toggle('hidden', this.value !== 'url');
-    refreshReadiness();
+    refreshReadiness(); refreshDast();
   });
-  $('profile').addEventListener('change', refreshReadiness);
-  $('url').addEventListener('change', refreshReadiness);
+  $('profile').addEventListener('change', function(){ refreshReadiness(); refreshDast(); });
+  $('url').addEventListener('change', function(){ refreshReadiness(); refreshDast(); });
 
   $('analyze').addEventListener('click', analyze);
   $('path').addEventListener('keydown', function(e){ if (e.key === 'Enter') analyze(); });
@@ -258,6 +265,49 @@ export function renderUiHtml(): string {
     var b=this; setTimeout(function(){ b.textContent='Copy command'; }, 1200);
   });
 
+  // ---- dynamic-scan setup (operator creds + app .env secrets) ----
+  function refreshDast(){
+    var dast = $('dast').value;
+    if (dast === 'none' || !state.path) { $('dastPanel').classList.add('hidden'); return; }
+    var q = new URLSearchParams(); q.set('path', state.path);
+    if ($('profile').value) q.set('profile', $('profile').value);
+    if (dast === 'deploy') q.set('deploy', '1');
+    if (dast === 'url' && $('url').value.trim()) q.set('url', $('url').value.trim());
+    api('/api/secrets-plan?' + q.toString()).then(function(r){ return r.json(); }).then(renderDast).catch(function(){});
+  }
+
+  function renderDast(plan){
+    $('dastPanel').classList.remove('hidden');
+    var deploy = $('dast').value === 'deploy';
+    $('dastNotes').innerHTML = (plan.notes || []).map(function(n){ return '• ' + esc(n); }).join('<br>');
+
+    if (deploy && plan.operator && plan.operator.length){
+      $('operatorNeeds').innerHTML = '<h3 class="hint" style="margin-top:14px">Operator credentials (set in DAT settings below)</h3><ul class="checklist">' +
+        plan.operator.map(function(o){
+          var icon = o.set ? '<span class="ok">✓</span>' : (o.required ? '<span class="bad">✗</span>' : '<span class="skip">○</span>');
+          var note = o.set
+            ? (o.detail ? ' <span class="hint">— ' + esc(o.detail) + '</span>' : '')
+            : (o.required ? ' <span class="hint">— not set</span>' : ' <span class="hint">(optional, not set)</span>');
+          return '<li>' + icon + '<span>' + esc(o.key) + '</span>' + note + '</li>';
+        }).join('') + '</ul>';
+    } else { $('operatorNeeds').innerHTML = ''; }
+
+    if (deploy){
+      if (plan.hasEnvExample === false){
+        $('appSecrets').innerHTML = '<p class="hint" style="margin-top:14px">No .env.example found — the app may need no extra secrets to boot.</p>';
+      } else {
+        var rows = (plan.appSecrets || []).map(function(s){
+          if (s.kind === 'required'){
+            return '<label>' + esc(s.key) + '<input type="password" data-appkey="' + esc(s.key) + '" value="' + esc(s.defaultValue || '') + '" placeholder="required for boot" autocomplete="off"></label>';
+          }
+          var badge = s.kind === 'auto-db' ? 'auto-provisioned' : (s.kind === 'auto-auth' ? 'auto-generated' : 'default');
+          return '<label>' + esc(s.key) + ' <span class="setpill">' + badge + '</span><div class="hint">' + esc(s.note) + '</div></label>';
+        }).join('');
+        $('appSecrets').innerHTML = '<h3 class="hint" style="margin-top:14px">This app\\'s .env <span>(in memory for this run only — never written)</span></h3><div class="settings-grid">' + rows + '</div>';
+      }
+    } else { $('appSecrets').innerHTML = ''; }
+  }
+
   // ---- run a scan with live progress (SSE) ----
   $('runBtn').addEventListener('click', runScan);
 
@@ -267,7 +317,14 @@ export function renderUiHtml(): string {
     if ($('profile').value) body.profile = $('profile').value;
     var dast = $('dast').value;
     if (dast === 'url' && $('url').value.trim()) body.url = $('url').value.trim();
-    if (dast === 'deploy') body.deploy = true;
+    if (dast === 'deploy') {
+      if (!window.confirm('This provisions an ephemeral GCP Cloud Run + Neon database, scans it, then tears them down. Continue?')) return;
+      body.deploy = true;
+      var secs = {};
+      var inputs = document.querySelectorAll('#appSecrets input[data-appkey]');
+      for (var i = 0; i < inputs.length; i++) { if (inputs[i].value) secs[inputs[i].getAttribute('data-appkey')] = inputs[i].value; }
+      body.appSecrets = secs;
+    }
 
     $('runBtn').disabled = true;
     $('progress').classList.remove('hidden');
