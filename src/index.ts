@@ -20,6 +20,7 @@ import { isProfileName, PROFILE_NAMES } from './profiles.js';
 import { loadConfig } from './config.js';
 import { checkReadiness, printReadiness } from './readiness.js';
 import { startReportServer } from './server/serve.js';
+import { startUiServer } from './server/ui.js';
 import { serverPort } from './server/library.js';
 
 const program = new Command();
@@ -190,6 +191,27 @@ program
     });
     server.on('error', (err: any) => {
       console.log(chalk.red.bold(`\n❌ Could not start report server on port ${port}: ${err.code === 'EADDRINUSE' ? 'port already in use' : err.message}`));
+      process.exit(1);
+    });
+  });
+
+program
+  .command('ui')
+  .description('Open a local web control panel (loopback only) to inspect an app\'s readiness, see what a scan needs, and view reports')
+  .option('-p, --port <port>', 'Port to listen on (default 4737, or DAT_PORT)')
+  .action((options) => {
+    const port = options.port ? parseInt(options.port, 10) : serverPort();
+    if (!Number.isInteger(port) || port <= 0 || port >= 65536) {
+      console.log(chalk.red.bold(`\n❌ Invalid --port "${options.port}".`));
+      process.exit(1);
+    }
+    const { server, token } = startUiServer(port);
+    server.on('listening', () => {
+      console.log(chalk.green.bold(`\n🛡️  DAT control panel: http://localhost:${port}/?t=${token}`));
+      console.log(chalk.gray('   Open the link above (token-gated, loopback only — Ctrl-C to stop).'));
+    });
+    server.on('error', (err: any) => {
+      console.log(chalk.red.bold(`\n❌ Could not start UI server on port ${port}: ${err.code === 'EADDRINUSE' ? 'port already in use' : err.message}`));
       process.exit(1);
     });
   });

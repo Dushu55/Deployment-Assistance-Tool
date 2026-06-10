@@ -32,6 +32,36 @@ a{color:#1a73e8;text-decoration:none}a:hover{text-decoration:underline}.muted{co
 
 const VALID_FILE = /^[A-Za-z0-9._-]+\.html$/;
 
+/**
+ * Resolve a `/r/<name>.html` request path to an absolute file inside the reports dir, or null.
+ * Strips path components (traversal), enforces the *.html allowlist, and confirms containment.
+ * Shared by every server that exposes reports so the security boundary lives in one place.
+ */
+export function resolveReportFile(requestPath: string): string | null {
+  const dir = reportsDir();
+  const name = path.basename(requestPath.replace(/^\/r\//, ''));
+  const full = path.join(dir, name);
+  if (VALID_FILE.test(name) && full.startsWith(dir + path.sep) && fs.existsSync(full)) {
+    return full;
+  }
+  return null;
+}
+
+/**
+ * Stream a report file to the response (with an error handler so a vanished/locked file can't
+ * crash the process). Returns true if it served a file, false if the path didn't resolve (the
+ * caller should then 404).
+ */
+export function serveReportFile(res: http.ServerResponse, requestPath: string): boolean {
+  const full = resolveReportFile(requestPath);
+  if (!full) return false;
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  const stream = fs.createReadStream(full);
+  stream.on('error', () => { if (!res.headersSent) res.writeHead(500); res.end(); });
+  stream.pipe(res);
+  return true;
+}
+
 /** Pure request handler (no listener) so it can be unit-tested with mock req/res. */
 export function createReportHandler() {
   return (req: http.IncomingMessage, res: http.ServerResponse): void => {
@@ -48,16 +78,8 @@ export function createReportHandler() {
       res.end(JSON.stringify(readManifest(), null, 2));
       return;
     }
-    if (pathname.startsWith('/r/')) {
-      const dir = reportsDir();
-      const name = path.basename(pathname.slice(3));          // strip any path components (traversal)
-      const full = path.join(dir, name);
-      // Serve ONLY *.html that actually live inside the reports dir — never SARIF/fix-manifest/etc.
-      if (VALID_FILE.test(name) && full.startsWith(dir + path.sep) && fs.existsSync(full)) {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        fs.createReadStream(full).pipe(res);
-        return;
-      }
+    if (pathname.startsWith('/r/') && serveReportFile(res, pathname)) {
+      return;
     }
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not found');
