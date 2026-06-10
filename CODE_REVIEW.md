@@ -12,7 +12,7 @@ simplification, efficiency, altitude) → dedup → verified each survivor again
 > server), and #10 (per-request waste) cleaned up. Build clean; full suite **277/277**; UI auth suite
 > now **11/11** (added malformed-URL + rebinding-on-`/` cases); live smoke confirmed (`/`→200,
 > `/%E0%A4%A`→400, report via shared helper→200, spoofed-Host report→403, unauthed API→403).
-> **Remaining (P2, not yet done):** #6 `--strict-preflight` help text, #7 `USER_MANUAL.md:183` table.
+> **All P1 + P2 findings resolved.**
 > Each finding is annotated **[FIXED]** / **[OPEN]** below.
 
 **Verdict:** No data-corruption or gate-correctness regressions. The cross-file trace confirmed the
@@ -82,13 +82,13 @@ masks the real, actionable message behind a generic "Could not load readiness."
 
 ## P2 — Doc / contract staleness from the reclassification
 
-### [OPEN] 6. `--strict-preflight` help still claims `config` is required (`src/index.ts:94`)
+### [FIXED] 6. `--strict-preflight` help still claims `config` is required (`src/index.ts:94`)
 > "Abort the scan if a required input (Dockerfile / tests / DAST target / **config**) is missing"
 
 After the reclassification a missing `.dat.config.yaml` no longer fails strict preflight. A CI author
 relying on this to enforce config presence gets a silent pass. **Fix:** drop "/ config".
 
-### [OPEN] 7. User manual still lists `.dat.config.yaml` as ⛔ Critical (`docs/USER_MANUAL.md:183`)
+### [FIXED] 7. User manual still lists `.dat.config.yaml` as ⛔ Critical (`docs/USER_MANUAL.md:183`)
 The readiness-tier table contradicts the new behavior (and the updated
 `APP_READINESS_REQUIREMENTS.md`). **Fix:** move `.dat.config.yaml` to the best-practice row.
 

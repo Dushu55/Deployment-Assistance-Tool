@@ -180,9 +180,9 @@ explanation of the risk:
 
 | Tier | Meaning | Examples |
 |---|---|---|
-| ⛔ **Critical** | Fix before production — active vuln, unverified logic, or supply-chain exposure | DAST target, test suite, dependency manifest, Dockerfile, `.dat.config.yaml` |
+| ⛔ **Critical** | Fix before production — active vuln, unverified logic, or supply-chain exposure | DAST target, test suite, dependency manifest, Dockerfile |
 | ⚠️ **Highly advised** | Enterprise-grade gaps attackers exploit | IaC (Terraform), language lockfiles, container image (CIS) |
-| 💡 **Best practice** | Maturity gaps for a polished product | Promptfoo LLM eval, Keploy API regression |
+| 💡 **Best practice** | Maturity gaps for a polished product | `.dat.config.yaml` (customizes policy; safe defaults apply without it), Promptfoo LLM eval, Keploy API regression |
 
 The report ends with a **Readiness Level** — `⛔ NOT PRODUCTION-SAFE` → `🟡 PRODUCTION-SAFE` →
 `✅ ENTERPRISE-GRADE` — telling you exactly what to fix to advance. Override tier membership via

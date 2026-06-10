@@ -91,7 +91,7 @@ program
   .option('--skip-component-eval', 'Disable per-component evaluators (fail-safe/robustness/coherence checks over the component graph)')
   .option('--llm-eval', 'Enable the LLM reasoning tier of the component evaluator (advisory; requires a Gemini backend — GEMINI_API_KEY or Vertex on a GCP project)')
   .option('--skip-preflight', 'Skip the application-readiness check at scan start')
-  .option('--strict-preflight', 'Abort the scan if a required input (Dockerfile / tests / DAST target / config) is missing')
+  .option('--strict-preflight', 'Abort the scan if a required input (Dockerfile / tests / DAST target / dependency manifest) is missing')
   .option('--auto-fix', 'Apply autonomous AST auto-fixes to the working tree (mutates files; verified by your test suite and reverted on failure)')
   .option('--no-publish', 'Do not copy the HTML report into the local ~/.dat/reports library or print a hosted link')
   .action(async (options) => {
