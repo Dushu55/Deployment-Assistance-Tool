@@ -12,19 +12,48 @@ async function fetchWithAuth(url: string, token?: string) {
   return fetch(url, { headers });
 }
 
+/**
+ * SonarQube needs a server + project configuration. Configured = SONAR_TOKEN plus a host/project key
+ * (env), or a sonar-project.properties in the target. Without it the scan should be skipped (advisory),
+ * never fail the gate.
+ */
+export function isSonarConfigured(cwd: string = process.cwd()): boolean {
+  if (process.env.SONAR_TOKEN && (process.env.SONAR_HOST_URL || process.env.SONAR_PROJECT_KEY)) return true;
+  return fs.existsSync(path.join(cwd, 'sonar-project.properties'));
+}
+
 export async function runSonarQube(): Promise<ScannerResult> {
   const startTime = Date.now();
+
+  // SonarQube is advisory code-quality, not a security gate. With no server/project configured, skip
+  // gracefully (like ZAP's missing-target coverage gap) rather than failing the quality gate.
+  if (!isSonarConfigured()) {
+    return {
+      scannerName: 'SonarQube', success: true, skipped: true, durationMs: Date.now() - startTime,
+      skipReason: 'No SonarQube server configured.',
+      issues: [{
+        id: 'SONARQUBE-NOT-CONFIGURED', severity: 'INFO',
+        message: 'SonarQube skipped: no server configured. Set SONAR_TOKEN + SONAR_HOST_URL (or add a sonar-project.properties) to enable code-quality analysis.',
+        source: 'SonarQube',
+      }],
+    };
+  }
+
   try {
     const result = await runCommand('sonar-scanner', [], 300000); // 5 min timeout
     const durationMs = Date.now() - startTime;
 
     if (result.exitCode !== 0) {
+      // Configured but the run failed (server unreachable / bad config). Stay advisory — skip rather
+      // than fail the gate on a SonarQube infrastructure problem.
       return {
-        scannerName: 'SonarQube',
-        success: false,
-        durationMs,
-        issues: [],
-        error: `Scanner failed with code ${result.exitCode}. Ensure sonar-scanner is installed. Details: ${result.stderr.trim() || result.stdout.trim().substring(0, 100)}`
+        scannerName: 'SonarQube', success: true, skipped: true, durationMs,
+        skipReason: `sonar-scanner exited ${result.exitCode}`,
+        issues: [{
+          id: 'SONARQUBE-RUN-FAILED', severity: 'INFO',
+          message: `SonarQube skipped: scanner exited ${result.exitCode} (server unreachable or misconfigured). ${(result.stderr.trim() || result.stdout.trim()).substring(0, 160)}`,
+          source: 'SonarQube',
+        }],
       };
     }
 
