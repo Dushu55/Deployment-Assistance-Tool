@@ -142,6 +142,7 @@ export interface DatRunOptions {
   strictPreflight?: boolean; // abort the scan if a required input is missing
   autoDetect?: boolean; // prune scanners whose advisory input is absent (default true; --no-auto-detect)
   deploy?: boolean; // provision + teardown an ephemeral GCP environment around the scan
+  allowUnauthenticated?: boolean; // deploy the ephemeral preview public (no IAM token); default off
   autoFix?: boolean; // opt-in: mutate the working tree with AST auto-fixes (default off for `scan`)
   throwOnFailure?: boolean; // programmatic invocation might not want process.exit(1)
   publish?: boolean; // copy the HTML report into ~/.dat/reports and print a hosted link (CLI default on)
@@ -398,7 +399,8 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     deployer = new GcpCloudRunDeployer({
       ...config.deployer?.gcp,
       databaseUrl: provisionedDb?.databaseUrl ?? config.deployer?.gcp?.databaseUrl,
-      cloudSqlInstance: provisionedDb?.cloudSqlInstance ?? config.deployer?.gcp?.cloudSqlInstance
+      cloudSqlInstance: provisionedDb?.cloudSqlInstance ?? config.deployer?.gcp?.cloudSqlInstance,
+      allowUnauthenticated: options.allowUnauthenticated ?? config.deployer?.gcp?.allowUnauthenticated
     });
     const { branch, sha } = await resolveGitRef();
     try {

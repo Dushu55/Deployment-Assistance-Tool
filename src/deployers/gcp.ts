@@ -21,6 +21,10 @@ export interface GcpDeployerOverrides {
   cpu?: string;
   memory?: string;
   maxInstances?: number;
+  // Opt-in: deploy the ephemeral preview WITHOUT IAM auth so a DAST scanner can reach it directly.
+  // Default false (private + IAM identity token). Useful when no service account is available to
+  // mint an identity token (e.g. a personal gcloud login). The preview is torn down after the scan.
+  allowUnauthenticated?: boolean;
   execFn?: ExecFn; // injectable for testing; defaults to child_process exec
 }
 
@@ -70,6 +74,9 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
   private databaseUrl?: string;
   private extraEnv: Record<string, string>;
 
+  // When true, deploy the preview public (no IAM) and skip identity-token generation.
+  private allowUnauthenticated: boolean;
+
   constructor(overrides?: GcpDeployerOverrides) {
     this.region = overrides?.region || process.env.GCP_REGION || 'us-central1';
     this.projectId = overrides?.projectId || process.env.GCP_PROJECT_ID || '';
@@ -86,6 +93,8 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
 
     this.databaseUrl = overrides?.databaseUrl || process.env.DATABASE_URL;
     this.extraEnv = overrides?.env || {};
+    this.allowUnauthenticated = overrides?.allowUnauthenticated === true
+      || process.env.GCP_ALLOW_UNAUTHENTICATED === 'true';
   }
 
   /** Collect all runtime env to inject into the preview (DATABASE_URL + Cloud SQL DB_* + extras). */
@@ -119,9 +128,10 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
       // Build the command.
       //  - --no-allow-unauthenticated: enforce IAM security (no public endpoint).
       //  - Cost controls: scale to zero between requests, cap instances, minimal CPU/memory.
+      const authFlag = this.allowUnauthenticated ? '--allow-unauthenticated' : '--no-allow-unauthenticated';
       let cmd =
         `gcloud run deploy ${serviceName} --source . --region ${region} ` +
-        `--no-allow-unauthenticated --format=json --quiet ` +
+        `${authFlag} --format=json --quiet ` +
         `--min-instances=0 --max-instances=${Number(this.maxInstances)} ` +
         `--cpu=${cpu} --memory=${memory}`;
 
@@ -166,19 +176,28 @@ export class GcpCloudRunDeployer implements EphemeralDeployer {
           throw new Error('Deployment succeeded but no URL was returned in the JSON payload.');
         }
 
-        emitInfraEvent('DEPLOY_READY', 'OK', { service: serviceName, url });
-        logger.info(`GCP Cloud Run ephemeral deployment is READY at ${url}. Generating IAM Identity Token...`);
+        emitInfraEvent('DEPLOY_READY', 'OK', { service: serviceName, url, public: this.allowUnauthenticated });
 
-        // Generate the OIDC Identity token for hitting the authenticated endpoint.
-        const tokenCmd = `gcloud auth print-identity-token --audiences="${url}"`;
         let authToken = '';
-        try {
-          const tokenResult = await this.execFn(tokenCmd);
-          authToken = tokenResult.stdout.trim();
-          logger.info(`Successfully generated IAM Identity Token for secure access.`);
-        } catch (tokenErr: any) {
-          logger.error(`Failed to generate identity token: ${tokenErr.message}`);
-          throw new Error('Could not generate IAM token for the secure endpoint.');
+        if (this.allowUnauthenticated) {
+          // Public ephemeral preview — no IAM token needed; the scanner reaches the URL directly.
+          logger.info(`GCP Cloud Run ephemeral deployment is READY at ${url} (public, no IAM — torn down after the scan).`);
+        } else {
+          logger.info(`GCP Cloud Run ephemeral deployment is READY at ${url}. Generating IAM Identity Token...`);
+          // Generate the OIDC Identity token for hitting the authenticated endpoint.
+          const tokenCmd = `gcloud auth print-identity-token --audiences="${url}"`;
+          try {
+            const tokenResult = await this.execFn(tokenCmd);
+            authToken = tokenResult.stdout.trim();
+            logger.info(`Successfully generated IAM Identity Token for secure access.`);
+          } catch (tokenErr: any) {
+            logger.error(`Failed to generate identity token: ${tokenErr.message}`);
+            throw new Error(
+              'Could not generate an IAM identity token for the private endpoint — this requires a ' +
+              'service account. For a personal gcloud login, pass --allow-unauthenticated (deploys the ' +
+              'ephemeral preview public, then tears it down).',
+            );
+          }
         }
 
         return { id: serviceName, url, authToken };

@@ -240,12 +240,14 @@ export function createUiHandler(token: string) {
         }
         if (req.method === 'POST' && pathname === '/api/scan') {
           const body = (await readJsonBody(req)) as {
-            path?: string; profile?: string; url?: string; deploy?: boolean; appSecrets?: Record<string, unknown>;
+            path?: string; profile?: string; url?: string; deploy?: boolean;
+            allowUnauthenticated?: boolean; appSecrets?: Record<string, unknown>;
           };
           const target = resolveTarget(body.path);
           const profile = body.profile && isProfileName(body.profile) ? body.profile : undefined;
           const url = body.url || undefined;
           const deploy = body.deploy === true;
+          const allowUnauthenticated = deploy && body.allowUnauthenticated === true;
 
           // For a deploy run, assemble the ephemeral app env: user-entered values for the genuine
           // third-party ('required') keys, plus a freshly generated value for each auth secret.
@@ -264,7 +266,7 @@ export function createUiHandler(token: string) {
             }
           }
 
-          const runId = startScan({ target, profile, url, deploy, appSecrets });
+          const runId = startScan({ target, profile, url, deploy, allowUnauthenticated, appSecrets });
           json(res, 200, { runId });
           return;
         }

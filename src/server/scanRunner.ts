@@ -65,6 +65,8 @@ export interface StartScanOptions {
   profile?: string;
   url?: string;
   deploy?: boolean;
+  /** With deploy: deploy the ephemeral preview public (no IAM token) so DAST can reach it. */
+  allowUnauthenticated?: boolean;
   /** App-owner runtime secrets for a --deploy run: injected into the child env, never persisted. */
   appSecrets?: Record<string, string>;
 }
@@ -79,7 +81,10 @@ export function startScan(opts: StartScanOptions): string {
   const args = [datEntry(), 'scan', '--path', opts.target, '--html', 'results/dat-report.html'];
   if (opts.profile) args.push('--profile', opts.profile);
   if (opts.url) args.push('--url', opts.url);
-  else if (opts.deploy) args.push('--deploy');
+  else if (opts.deploy) {
+    args.push('--deploy');
+    if (opts.allowUnauthenticated) args.push('--allow-unauthenticated');
+  }
 
   // Env precedence: process env < operator creds (~/.dat/.env) < this run's ephemeral app secrets.
   const childEnv: NodeJS.ProcessEnv = { ...process.env, ...readOperatorEnv(), ...(opts.appSecrets ?? {}) };

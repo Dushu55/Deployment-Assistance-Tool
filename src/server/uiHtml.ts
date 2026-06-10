@@ -56,7 +56,10 @@ export function renderUiHtml(): string {
   a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
   .btnrow { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; }
   ul.scanners { list-style:none; margin:12px 0 0; padding:0; }
-  ul.scanners li { padding:5px 0; font-size:.88rem; display:flex; gap:8px; align-items:center; }
+  ul.scanners li { padding:7px 0; font-size:.88rem; border-bottom:1px solid var(--line); }
+  ul.scanners li:last-child { border-bottom:0; }
+  .scanner-row { display:flex; gap:8px; align-items:center; }
+  .scanner-desc { margin-left:24px; margin-top:2px; font-size:.76rem; color:var(--muted); }
   .spin { color:var(--accent); } .skip { color:var(--muted); }
   pre.logtail { background:#0f172a; color:#cbd5e1; padding:12px; border-radius:8px; font-size:.76rem; max-height:200px; overflow:auto; margin-top:12px; white-space:pre-wrap; }
   .result { margin-top:14px; padding:12px 14px; border-radius:8px; font-weight:600; font-size:.95rem; }
@@ -136,6 +139,7 @@ export function renderUiHtml(): string {
     <h2>3b · Dynamic scan setup</h2>
     <div id="dastNotes" class="hint"></div>
     <div id="operatorNeeds"></div>
+    <div id="deployOpts"></div>
     <div id="appSecrets"></div>
   </div>
 
@@ -293,12 +297,21 @@ export function renderUiHtml(): string {
     } else { $('operatorNeeds').innerHTML = ''; }
 
     if (deploy){
+      $('deployOpts').innerHTML = '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:.85rem">' +
+        '<input type="checkbox" id="allowUnauth" style="margin-top:3px">' +
+        '<span>Deploy the preview <b>public</b> (no IAM token) so the scanner can reach it — needed when you don\\'t have a service account (e.g. a personal gcloud login). The throwaway service is torn down after the scan.</span></label>';
+    } else { $('deployOpts').innerHTML = ''; }
+
+    if (deploy){
       if (plan.hasEnvExample === false){
         $('appSecrets').innerHTML = '<p class="hint" style="margin-top:14px">No .env.example found — the app may need no extra secrets to boot.</p>';
       } else {
         var rows = (plan.appSecrets || []).map(function(s){
           if (s.kind === 'required'){
-            return '<label>' + esc(s.key) + '<input type="password" data-appkey="' + esc(s.key) + '" value="' + esc(s.defaultValue || '') + '" placeholder="required for boot" autocomplete="off"></label>';
+            // Mask only genuinely secret-looking keys; show plain text for things like *_EMAIL/_URL
+            // so a prefilled default (e.g. admin@bakery.test) is readable, not dots.
+            var isSecret = /(SECRET|TOKEN|PASSWORD|PASSWD|PWD|CREDENTIAL|PRIVATE|API[_-]?KEY|_KEY$|^KEY$|ACCESS[_-]?KEY)/i.test(s.key);
+            return '<label>' + esc(s.key) + '<input type="' + (isSecret ? 'password' : 'text') + '" data-appkey="' + esc(s.key) + '" value="' + esc(s.defaultValue || '') + '" placeholder="required for boot" autocomplete="off"></label>';
           }
           var badge = s.kind === 'auto-db' ? 'auto-provisioned' : (s.kind === 'auto-auth' ? 'auto-generated' : 'default');
           return '<label>' + esc(s.key) + ' <span class="setpill">' + badge + '</span><div class="hint">' + esc(s.note) + '</div></label>';
@@ -320,6 +333,8 @@ export function renderUiHtml(): string {
     if (dast === 'deploy') {
       if (!window.confirm('This provisions an ephemeral GCP Cloud Run + Neon database, scans it, then tears them down. Continue?')) return;
       body.deploy = true;
+      var unauth = document.getElementById('allowUnauth');
+      if (unauth && unauth.checked) body.allowUnauthenticated = true;
       var secs = {};
       var inputs = document.querySelectorAll('#appSecrets input[data-appkey]');
       for (var i = 0; i < inputs.length; i++) { if (inputs[i].value) secs[inputs[i].getAttribute('data-appkey')] = inputs[i].value; }
@@ -364,12 +379,34 @@ export function renderUiHtml(): string {
     el.scrollTop = el.scrollHeight;
   }
 
+  // What each scanner targets — shown beneath its name in the run progress list.
+  var SCANNER_DESC = {
+    'Semgrep': 'SAST — pattern-based code flaws (injection, XSS, hardcoded secrets).',
+    'SonarQube': 'Code quality, bugs & vulnerabilities (needs a SonarQube server + token).',
+    'Qodo Cover-Agent': 'AI-generates tests to raise coverage (needs an LLM API key).',
+    'Gitleaks (Secrets)': 'Secret scanning — leaked keys/tokens in the code and git history.',
+    'Hadolint': 'Dockerfile linting & best-practice / hardening checks.',
+    'Trivy': 'Dependency & container CVE scanning (software composition analysis).',
+    'Trivy (FS)': 'Dependency & container CVE scanning (software composition analysis).',
+    'Dockle': 'Container image CIS hardening checks (needs a built image).',
+    'Checkov': 'Infrastructure-as-Code misconfiguration scan (Terraform / Dockerfile).',
+    'OSV-Scanner': 'Open-source dependency vulnerabilities from the OSV database.',
+    'OWASP ZAP': 'DAST — dynamic web scan (XSS / SQLi / auth) against a running URL.',
+    'Jest Coverage': 'Measures JS/TS test coverage against the threshold.',
+    'k6 Load Test': 'Performance / load test against a running URL.',
+    'Garak (LLM DAST)': 'LLM red-teaming — prompt injection, jailbreaks, unsafe output.',
+    'Logic Tests': "Runs the app's own test suite (npm test / pytest / …).",
+    'Component Evaluator': 'Per-component checks — auth, robustness, fail-safe, coherence — across the app graph.'
+  };
+
   function renderScanners(map){
     $('scanners').innerHTML = Object.keys(map).map(function(name){
       var st = map[name];
       var icon = st === 'skipped' ? '<span class="skip">⤼</span>' : '<span class="spin">➜</span>';
       var tag = st === 'skipped' ? ' <span class="hint">(skipped — tool not installed)</span>' : '';
-      return '<li>' + icon + '<span>' + esc(name) + '</span>' + tag + '</li>';
+      var desc = SCANNER_DESC[name];
+      return '<li><div class="scanner-row">' + icon + '<span>' + esc(name) + '</span>' + tag + '</div>' +
+        (desc ? '<div class="scanner-desc">' + esc(desc) + '</div>' : '') + '</li>';
     }).join('');
   }
 

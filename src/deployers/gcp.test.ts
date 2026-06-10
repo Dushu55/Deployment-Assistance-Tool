@@ -153,7 +153,7 @@ test('GcpCloudRunDeployer teardown robustness', async (t) => {
     // service that was already created must be torn down, not leaked.
     const { calls, execFn } = recorder({ reject: /print-identity-token/ });
     const d = new GcpCloudRunDeployer({ projectId: 'dat-tool', execFn });
-    await assert.rejects(() => d.deployBranch('main'), /IAM token/);
+    await assert.rejects(() => d.deployBranch('main'), /identity token/);
     assert.ok(
       calls.some(c => /run services delete dat-ephemeral-[0-9a-f]{8}/.test(c)),
       'a service created before the failure must be torn down',
@@ -168,5 +168,26 @@ test('GcpCloudRunDeployer teardown robustness', async (t) => {
     assert.strictEqual(d.activeServiceName, dep.id, 'service name tracked after a successful deploy');
     await d.teardown(dep.id);
     assert.strictEqual(d.activeServiceName, undefined, 'tracked service cleared after teardown');
+  });
+});
+
+test('GcpCloudRunDeployer auth modes', async (t) => {
+  await t.test('default: private (--no-allow-unauthenticated) + mints an identity token', async () => {
+    const { calls, execFn } = recorder({ token: 'tok' });
+    const dep = await new GcpCloudRunDeployer({ projectId: 'dat-tool', execFn }).deployBranch('main');
+    const deployCmd = calls.find(c => c.includes('run deploy'))!;
+    assert.match(deployCmd, /--no-allow-unauthenticated/);
+    assert.ok(calls.some(c => c.includes('print-identity-token')));
+    assert.strictEqual(dep.authToken, 'tok');
+  });
+
+  await t.test('allowUnauthenticated: deploys public and skips the identity token', async () => {
+    const { calls, execFn } = recorder({});
+    const dep = await new GcpCloudRunDeployer({ projectId: 'dat-tool', allowUnauthenticated: true, execFn }).deployBranch('main');
+    const deployCmd = calls.find(c => c.includes('run deploy'))!;
+    assert.match(deployCmd, /--allow-unauthenticated/);
+    assert.ok(!deployCmd.includes('--no-allow-unauthenticated'), 'must not also pass --no-allow-unauthenticated');
+    assert.ok(!calls.some(c => c.includes('print-identity-token')), 'no token minted for a public preview');
+    assert.strictEqual(dep.authToken, '');
   });
 });

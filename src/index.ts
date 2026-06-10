@@ -75,6 +75,7 @@ program
   .option('-c, --config <path>', 'Path to config file', '.dat.config.yaml')
   .option('-u, --url <url>', 'Target URL for DAST scanning (e.g. OWASP ZAP)')
   .option('--deploy', 'Provision an ephemeral GCP Cloud Run environment (scale-to-zero, minimal cost), scan it, then tear it down. Requires gcloud CLI + GCP_PROJECT_ID (or deployer.gcp.projectId in config). Ignored if --url is set.')
+  .option('--allow-unauthenticated', 'With --deploy: deploy the ephemeral preview PUBLIC (no IAM token) so the DAST scanner can reach it, then tear it down. Use when no service account is available to mint an identity token (e.g. a personal gcloud login). Default: private + IAM.')
   .option('--sarif <path>', 'Output results in SARIF format', 'results/dat-report.sarif')
   .option('--csv <path>', 'Output results in CSV format', 'results/dat-report.csv')
   .option('--pdf <path>', 'Output results in professional PDF format', 'results/dat-report.pdf')

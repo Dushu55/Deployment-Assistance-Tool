@@ -119,6 +119,7 @@ export interface DatConfig {
       cpu?: string;              // default '1'
       memory?: string;           // default '512Mi'
       maxInstances?: number;     // default 1
+      allowUnauthenticated?: boolean; // deploy the ephemeral preview public (no IAM token); default false
     };
   };
 }
