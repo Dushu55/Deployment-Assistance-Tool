@@ -60,6 +60,28 @@ test('publishReport', async (t) => {
   });
 });
 
+test('resolveReportSidecar', async (t) => {
+  await t.test('resolves the .json sidecar written by publishReport, rejects traversal/non-html', async () => {
+    tmpHome();
+    const lib = await freshLib();
+    const { resolveReportSidecar } = await import('./serve.js');
+    const src = path.join(os.tmpdir(), `rep-sc-${Date.now()}.html`);
+    fs.writeFileSync(src, '<html>x</html>');
+    lib.publishReport({
+      htmlPath: src, appName: 'sc', score: 10, gate: 'fail',
+      summary: { critical: 0, high: 0, medium: 0, low: 0, info: 0 }, timestamp: '2026-06-03T09:00:00.000Z',
+      results: [{ scannerName: 'Semgrep', success: true, durationMs: 1, issues: [{ id: 'X', severity: 'HIGH', message: 'm', source: 'Semgrep' }] }]
+    });
+    const file = lib.readManifest()[0].file;
+    const resolved = resolveReportSidecar(file);
+    assert.ok(resolved && fs.existsSync(resolved), 'sidecar resolves');
+    assert.strictEqual((JSON.parse(fs.readFileSync(resolved!, 'utf8')) as any[])[0].scannerName, 'Semgrep');
+    assert.strictEqual(resolveReportSidecar('../../etc/passwd'), null);
+    assert.strictEqual(resolveReportSidecar('index.json'), null); // not a *.html basename
+    assert.strictEqual(resolveReportSidecar('nope.html'), null);  // no sidecar on disk
+  });
+});
+
 test('report server handler', async (t) => {
   tmpHome();
   const lib = await freshLib();

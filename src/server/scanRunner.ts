@@ -21,7 +21,7 @@ export interface ScanResult {
 }
 export type ScanEvent =
   | { type: 'log'; line: string }
-  | { type: 'scanner'; name: string; state: 'running' | 'skipped' }
+  | { type: 'scanner'; name: string; state: 'running' | 'skipped'; reason?: string }
   | { type: 'score'; score: number }
   | { type: 'gate'; gate: 'pass' | 'fail' }
   | { type: 'report'; file: string }
@@ -32,7 +32,7 @@ export function classifyLine(line: string): Exclude<ScanEvent, { type: 'log' } |
   const t = line.replace(ANSI, '').trim();
   let m: RegExpMatchArray | null;
   if ((m = t.match(/^➜ Running (.+?)\.\.\.$/))) return { type: 'scanner', name: m[1], state: 'running' };
-  if ((m = t.match(/^⤼ Skipping (.+?) —/))) return { type: 'scanner', name: m[1], state: 'skipped' };
+  if ((m = t.match(/^⤼ Skipping (.+?) — (.+)$/))) return { type: 'scanner', name: m[1], state: 'skipped', reason: m[2].trim() };
   if ((m = t.match(/Deployment Readiness Score:\s*(\d+)\s*\/\s*100/))) return { type: 'score', score: Number(m[1]) };
   if (/Quality Gate Failed/.test(t)) return { type: 'gate', gate: 'fail' };
   if (/Quality Gate Passed/.test(t)) return { type: 'gate', gate: 'pass' };

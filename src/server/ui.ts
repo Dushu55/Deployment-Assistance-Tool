@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { readManifest } from './library.js';
-import { serveReportFile } from './serve.js';
+import { serveReportFile, resolveReportSidecar } from './serve.js';
 import { renderUiHtml } from './uiHtml.js';
 import { maskedOperatorEnv, writeOperatorEnv } from './operatorEnv.js';
 import { startScan, getRun, type ScanEvent } from './scanRunner.js';
@@ -12,24 +12,10 @@ import { loadConfig } from '../config.js';
 import { checkReadiness } from '../readiness.js';
 import { getEnabledScanners } from '../orchestrator.js';
 import { isBinaryAvailable } from '../utils/preflight.js';
+import { INSTALL_HINTS, buildModuleCatalog } from './moduleCatalog.js';
 import { EnvironmentDetector, databaseSummaryLine } from '../env.js';
 import { isProfileName } from '../profiles.js';
 import type { InputCategory, InputTier, ProfileName } from '../types.js';
-
-// Copy-paste install hints for the external tools DAT shells out to.
-// Python-based tools use pipx (Homebrew's Python is PEP 668 externally-managed, so plain `pip
-// install` is blocked). cover-agent is NOT on PyPI — it ships as a GitHub release binary.
-const INSTALL_HINTS: Record<string, string> = {
-  semgrep: 'brew install semgrep', trivy: 'brew install trivy', gitleaks: 'brew install gitleaks',
-  hadolint: 'brew install hadolint', dockle: 'brew install dockle', checkov: 'pipx install checkov',
-  'osv-scanner': 'brew install osv-scanner', 'sonar-scanner': 'brew install sonar-scanner',
-  bandit: 'pipx install bandit', 'pip-audit': 'pipx install pip-audit', gosec: 'brew install gosec',
-  govulncheck: 'go install golang.org/x/vuln/cmd/govulncheck@latest', cargo: 'install Rust (rustup)',
-  dotnet: 'install the .NET SDK', mvn: 'install Maven', gradle: 'install Gradle', k6: 'brew install k6',
-  keploy: 'see keploy.io/docs/install', python3: 'install Python 3', docker: 'install Docker Desktop',
-  gcloud: 'brew install --cask google-cloud-sdk',
-  'cover-agent': 'download cover-agent-<os> from github.com/qodo-ai/qodo-cover/releases',
-};
 
 interface ToolStatus { binary: string; present: boolean; hint?: string; }
 interface InputView { label: string; category: InputCategory; tier: InputTier; present: boolean; }
@@ -218,6 +204,18 @@ export function createUiHandler(token: string) {
         }
         if (req.method === 'GET' && pathname === '/api/reports') {
           json(res, 200, readManifest());
+          return;
+        }
+        if (req.method === 'GET' && pathname === '/api/modules') {
+          json(res, 200, await buildModuleCatalog());
+          return;
+        }
+        if (req.method === 'GET' && pathname === '/api/findings') {
+          const q = new URL(req.url || '/', 'http://localhost').searchParams;
+          const sidecar = resolveReportSidecar(q.get('file') || '');
+          if (!sidecar) { json(res, 404, { error: 'No findings for that report (re-run the scan to generate them).' }); return; }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(fs.readFileSync(sidecar, 'utf8'));
           return;
         }
         if (req.method === 'GET' && pathname === '/api/operator-settings') {

@@ -48,6 +48,21 @@ export function resolveReportFile(requestPath: string): string | null {
 }
 
 /**
+ * Resolve a report's structured findings sidecar from its HTML basename: validate against the
+ * same `*.html` allowlist, swap the extension to `.json`, and confirm containment in the reports
+ * dir. Returns the absolute path or null (also null when no sidecar exists, e.g. an older report).
+ */
+export function resolveReportSidecar(htmlBasename: string): string | null {
+  const dir = reportsDir();
+  const name = path.basename(htmlBasename);
+  if (!VALID_FILE.test(name)) return null;
+  const jsonName = name.replace(/\.html$/, '.json');
+  const full = path.join(dir, jsonName);
+  if (full.startsWith(dir + path.sep) && fs.existsSync(full)) return full;
+  return null;
+}
+
+/**
  * Stream a report file to the response (with an error handler so a vanished/locked file can't
  * crash the process). Returns true if it served a file, false if the path didn't resolve (the
  * caller should then 404).

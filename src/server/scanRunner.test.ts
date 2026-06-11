@@ -6,10 +6,10 @@ test('classifyLine parses scan stdout markers', async (t) => {
   await t.test('scanner running', () => {
     assert.deepStrictEqual(classifyLine('➜ Running Semgrep...'), { type: 'scanner', name: 'Semgrep', state: 'running' });
   });
-  await t.test('scanner skipped (missing tool)', () => {
+  await t.test('scanner skipped (missing tool) — captures the reason', () => {
     assert.deepStrictEqual(
       classifyLine('⤼ Skipping Gitleaks (Secrets) — Required tool(s) not found on PATH: gitleaks'),
-      { type: 'scanner', name: 'Gitleaks (Secrets)', state: 'skipped' });
+      { type: 'scanner', name: 'Gitleaks (Secrets)', state: 'skipped', reason: 'Required tool(s) not found on PATH: gitleaks' });
   });
   await t.test('readiness score (leading whitespace)', () => {
     assert.deepStrictEqual(classifyLine('   Deployment Readiness Score: 42/100'), { type: 'score', score: 42 });
