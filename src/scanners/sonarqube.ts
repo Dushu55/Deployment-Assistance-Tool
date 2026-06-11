@@ -1,5 +1,5 @@
 import { runCommand } from '../runner.js';
-import { ScannerResult, Issue, Scanner, Severity } from '../types.js';
+import { ScannerResult, Issue, Scanner, Severity, DatConfig } from '../types.js';
 import { mapSeverity } from '../utils.js';
 import fs from 'fs';
 import path from 'path';
@@ -12,35 +12,94 @@ async function fetchWithAuth(url: string, token?: string) {
   return fetch(url, { headers });
 }
 
-/**
- * SonarQube needs a server + project configuration. Configured = SONAR_TOKEN plus a host/project key
- * (env), or a sonar-project.properties in the target. Without it the scan should be skipped (advisory),
- * never fail the gate.
- */
-export function isSonarConfigured(cwd: string = process.cwd()): boolean {
-  if (process.env.SONAR_TOKEN && (process.env.SONAR_HOST_URL || process.env.SONAR_PROJECT_KEY)) return true;
+/** True when the target ships its own SonarQube config (which we then leave untouched). */
+function hasPropertiesFile(cwd: string): boolean {
   return fs.existsSync(path.join(cwd, 'sonar-project.properties'));
 }
 
-export async function runSonarQube(): Promise<ScannerResult> {
+/**
+ * SonarQube needs a server to talk to. Configured = SONAR_TOKEN + a host URL (env or config), OR the
+ * target ships its own sonar-project.properties. Without that, skip gracefully (advisory) rather than
+ * failing the gate. NOTE: a SONAR_PROJECT_KEY alone is NOT enough — a key can't reach a server.
+ */
+export function isSonarConfigured(cwd: string = process.cwd(), config?: DatConfig): boolean {
+  const hostUrl = process.env.SONAR_HOST_URL || config?.scanners?.sonarqube?.hostUrl;
+  if (process.env.SONAR_TOKEN && hostUrl) return true;
+  return hasPropertiesFile(cwd);
+}
+
+/**
+ * Project key when the repo has no sonar config: explicit override → SONAR_PROJECT_KEY → a slug of the
+ * app folder name. Sanitized to SonarQube's allowed key charset ([A-Za-z0-9._:-]); prefixed `dat-` when
+ * empty or all-digits (SonarQube rejects all-numeric keys). A self-hosted server auto-creates it.
+ */
+export function deriveProjectKey(cwd: string = process.cwd(), config?: DatConfig): string {
+  const explicit = config?.scanners?.sonarqube?.projectKey || process.env.SONAR_PROJECT_KEY;
+  if (explicit) return explicit;
+  const slug = path.basename(cwd).replace(/[^A-Za-z0-9._:-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '');
+  return (!slug || /^\d+$/.test(slug)) ? `dat-${slug || 'app'}` : slug;
+}
+
+// Dependency/build/output dirs SonarQube should never analyse — keeps a zero-config run signal-rich.
+export const DEFAULT_SONAR_EXCLUSIONS = [
+  '**/node_modules/**', '**/dist/**', '**/build/**', '**/.next/**', '**/out/**',
+  '**/coverage/**', '**/vendor/**', '**/.venv/**', '**/__pycache__/**', '**/target/**',
+];
+
+export interface SonarArgsOptions {
+  cwd: string;
+  config?: DatConfig;
+  hasProperties: boolean;       // when true, inject nothing — the repo's own config wins
+}
+
+/**
+ * Build the `sonar-scanner` CLI flags DAT injects so SonarQube runs without an in-repo config. Pure
+ * (no I/O) for testing. The token is NEVER placed here — sonar-scanner reads SONAR_TOKEN from the
+ * environment, so it stays out of the process argument list. Returns [] when the repo configures Sonar.
+ */
+export function buildSonarArgs(opts: SonarArgsOptions): string[] {
+  if (opts.hasProperties) return [];
+  const cfg = opts.config?.scanners?.sonarqube;
+  const hostUrl = process.env.SONAR_HOST_URL || cfg?.hostUrl;
+  const args = [
+    `-Dsonar.projectKey=${deriveProjectKey(opts.cwd, opts.config)}`,
+    `-Dsonar.projectName=${path.basename(opts.cwd)}`,
+    `-Dsonar.sources=${cfg?.sources || '.'}`,
+    '-Dsonar.scm.disabled=true',
+  ];
+  if (hostUrl) args.push(`-Dsonar.host.url=${hostUrl}`);
+  // Default-exclude dependency/build dirs so a zero-config run doesn't analyse vendored code (which
+  // produces junk findings, e.g. issues inside node_modules); merge the global config.exclude on top.
+  const exclusions = [...DEFAULT_SONAR_EXCLUSIONS, ...(opts.config?.exclude ?? [])];
+  args.push(`-Dsonar.exclusions=${exclusions.join(',')}`);
+  // Only for SonarCloud — never required on self-hosted, added only when explicitly provided.
+  const org = process.env.SONAR_ORGANIZATION || cfg?.organization;
+  if (org) args.push(`-Dsonar.organization=${org}`);
+  return args;
+}
+
+export async function runSonarQube(cwd: string = process.cwd(), config?: DatConfig): Promise<ScannerResult> {
   const startTime = Date.now();
 
-  // SonarQube is advisory code-quality, not a security gate. With no server/project configured, skip
+  // SonarQube is advisory code-quality, not a security gate. With no server configured, skip
   // gracefully (like ZAP's missing-target coverage gap) rather than failing the quality gate.
-  if (!isSonarConfigured()) {
+  if (!isSonarConfigured(cwd, config)) {
     return {
       scannerName: 'SonarQube', success: true, skipped: true, durationMs: Date.now() - startTime,
       skipReason: 'No SonarQube server configured.',
       issues: [{
         id: 'SONARQUBE-NOT-CONFIGURED', severity: 'INFO',
-        message: 'SonarQube skipped: no server configured. Set SONAR_TOKEN + SONAR_HOST_URL (or add a sonar-project.properties) to enable code-quality analysis.',
+        message: 'SonarQube skipped: no server configured. Set SONAR_HOST_URL + SONAR_TOKEN (operator settings) to run it on any app — no in-repo sonar-project.properties needed.',
         source: 'SonarQube',
       }],
     };
   }
 
   try {
-    const result = await runCommand('sonar-scanner', [], 300000); // 5 min timeout
+    // Inject the analysis parameters ourselves (project key, host, sources, exclusions) so SonarQube
+    // runs on a target with no committed config; a repo that ships sonar-project.properties wins.
+    const args = buildSonarArgs({ cwd, config, hasProperties: hasPropertiesFile(cwd) });
+    const result = await runCommand('sonar-scanner', args, 300000); // 5 min timeout
     const durationMs = Date.now() - startTime;
 
     if (result.exitCode !== 0) {
@@ -65,8 +124,10 @@ export async function runSonarQube(): Promise<ScannerResult> {
     const taskData = fs.readFileSync(reportTaskPath, 'utf8');
     const props: Record<string, string> = {};
     taskData.split('\n').forEach(line => {
-       const [k, v] = line.split('=');
-       if (k && v) props[k.trim()] = v.trim();
+       // Split on the FIRST '=' only — values are URLs (ceTaskUrl=…/api/ce/task?id=<uuid>) that
+       // contain their own '=', so a naive split('=') truncates the task id and breaks polling.
+       const idx = line.indexOf('=');
+       if (idx > 0) props[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
     });
 
     const ceTaskUrl = props['ceTaskUrl'];
@@ -78,20 +139,41 @@ export async function runSonarQube(): Promise<ScannerResult> {
         return { scannerName: 'SonarQube', success: true, durationMs, issues: [], error: 'Incomplete SonarQube task data.' };
     }
 
-    // Polling logic
+    // Poll the compute-engine task until the analysis is processed. A cold server's FIRST analysis
+    // can take a couple of minutes to index, so budget generously (~4 min, within the orchestrator's
+    // per-scanner timeout) and distinguish "still processing" from a real FAILED/CANCELED task.
+    const POLL_MS = 3000, MAX_POLLS = 80; // ~4 minutes
     let status = 'PENDING';
-    let attempts = 0;
-    while ((status === 'PENDING' || status === 'IN_PROGRESS') && attempts < 30) {
-       await new Promise(r => setTimeout(r, 2000));
-       attempts++;
-       const ceRes = await fetchWithAuth(ceTaskUrl, token);
-       if (!ceRes.ok) break;
-       const ceJson = (await ceRes.json()) as any;
-       status = ceJson.task.status;
+    for (let attempt = 0; (status === 'PENDING' || status === 'IN_PROGRESS') && attempt < MAX_POLLS; attempt++) {
+       await new Promise(r => setTimeout(r, POLL_MS));
+       // Tolerate transient blips (a 5xx/429 while the server is busy, a dropped connection) by
+       // continuing to poll within the budget — never abort the whole analysis on one bad response.
+       try {
+         const ceRes = await fetchWithAuth(ceTaskUrl, token);
+         if (!ceRes.ok) continue;
+         const ceJson = (await ceRes.json()) as any;
+         status = ceJson?.task?.status ?? status;
+       } catch { /* transient network error — keep polling */ }
     }
 
+    // Upload succeeded but the server is still crunching, or the task didn't end SUCCESS. Stay
+    // advisory (never fail the gate) but report it as SKIPPED with a real reason — NOT a clean
+    // "no issues found", which would falsely imply the code is clean.
+    if (status === 'PENDING' || status === 'IN_PROGRESS') {
+       return {
+         scannerName: 'SonarQube', success: true, skipped: true, durationMs: Date.now() - startTime,
+         skipReason: 'Analysis submitted but the server was still processing after ~4 min; results not fetched. Re-run to collect them.',
+         issues: [{ id: 'SONARQUBE-PENDING', severity: 'INFO', source: 'SonarQube',
+           message: `SonarQube analysis was submitted but its server task was still ${status} after polling; findings were not retrieved this run.` }],
+       };
+    }
     if (status !== 'SUCCESS') {
-       return { scannerName: 'SonarQube', success: true, durationMs, issues: [], error: `SonarQube analysis failed or timed out. Status: ${status}` };
+       return {
+         scannerName: 'SonarQube', success: true, skipped: true, durationMs: Date.now() - startTime,
+         skipReason: `SonarQube compute task ended ${status}`,
+         issues: [{ id: 'SONARQUBE-TASK-FAILED', severity: 'INFO', source: 'SonarQube',
+           message: `SonarQube server task ended with status ${status}; no findings retrieved.` }],
+       };
     }
 
     // Fetch issues
@@ -133,5 +215,5 @@ export const sonarqubeScanner: Scanner = {
   module: 'static',
   supportedLanguages: 'all',
   requiredBinaries: ['sonar-scanner'],
-  async run(ctx) { return runSonarQube(); }
+  async run(ctx) { return runSonarQube(process.cwd(), ctx.config); }
 };
