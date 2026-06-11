@@ -98,9 +98,12 @@ export async function runZap(url?: string, authToken?: string, failOnMissingTarg
     }
 
     if (!fs.existsSync(reportPath)) {
+       // Include the exit code + output tail so the cause is diagnosable from the result/audit log
+       // (e.g. an active-scan error, a 137/OOM kill, or the container failing to write the mount).
+       const detail = (result.stderr.trim() || result.stdout.trim()).slice(-300);
        return {
           scannerName: 'OWASP ZAP', success: false, durationMs, issues: [],
-          error: `ZAP report JSON was not generated at expected path.`
+          error: `ZAP report JSON was not generated (docker exit ${result.exitCode}). ${detail}`
        };
     }
 

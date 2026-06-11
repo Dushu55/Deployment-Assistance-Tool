@@ -26,6 +26,21 @@ const redactSensitiveData = winston.format((info) => {
   return info;
 });
 
+// Held so flushLogger() can wait on the file transport's own drain — the logger-level 'finish'
+// event fires before the rotating file stream has written its buffered lines to disk.
+const fileTransport = new winston.transports.DailyRotateFile({
+  dirname: LOG_DIR,
+  filename: 'dat-audit-%DATE%.log',
+  datePattern: 'YYYY-MM-DD',
+  zippedArchive: true,
+  maxSize: '20m',
+  maxFiles: '14d',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json() // Always use JSON for file-based audit logs
+  )
+});
+
 export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
@@ -42,18 +57,25 @@ export const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    // Keep a persistent daily rotating log on the local disk
-    new winston.transports.DailyRotateFile({
-      dirname: LOG_DIR,
-      filename: 'dat-audit-%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '14d',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json() // Always use JSON for file-based audit logs
-      )
-    })
+    fileTransport // persistent daily rotating audit log on local disk
   ]
 });
+
+/**
+ * Flush pending log writes before the process exits. The file transport is asynchronous, so a bare
+ * `process.exit()` can truncate the LAST buffered line(s) — e.g. the final DB_TEARDOWN audit event
+ * emitted in the pipeline's teardown. Call this and await it before exiting on a deploy-bearing path.
+ */
+export function flushLogger(): Promise<void> {
+  // winston-daily-rotate-file (v5) writes asynchronously and drops the last buffered line if the
+  // process exits immediately after logging — this is what silently lost the final DB_TEARDOWN
+  // audit event on a deploy run. Yield a macrotask so winston hands queued entries to the file
+  // stream, then allow a short drain window before the caller exits.
+  // NB: do NOT call logger.end() here — it closes the logger before the final entry is written,
+  // which is precisely what dropped the line (verified empirically).
+  // The timer must NOT be unref'd: it is the drain window, and it needs to keep the event loop
+  // alive for its duration so the promise actually settles before the caller exits.
+  return new Promise((resolve) => {
+    setImmediate(() => setTimeout(resolve, 150));
+  });
+}

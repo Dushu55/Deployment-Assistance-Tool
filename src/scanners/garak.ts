@@ -27,6 +27,19 @@ export async function runGarak(targetUrl?: string): Promise<ScannerResult> {
     };
   }
 
+  // garak is a Python PACKAGE, not just the python3 binary — the orchestrator preflight only checks
+  // python3, so a missing package would otherwise surface as a confusing "report not generated".
+  // Probe importability and skip gracefully (advisory) with an actionable message instead.
+  const probe = await runCommand('python3', ['-c', 'import garak'], 15000).catch(() => ({ exitCode: 1, stdout: '', stderr: '' }));
+  if (probe.exitCode !== 0) {
+    return {
+      scannerName: 'Garak (LLM DAST)', success: true, skipped: true, durationMs: Date.now() - startTime,
+      skipReason: 'garak Python package not installed.',
+      issues: [{ id: 'GARAK-NOT-INSTALLED', severity: 'INFO', source: 'Garak',
+        message: 'Garak skipped: the garak Python package is not installed. Install it (e.g. `pipx install garak` or `pip install garak`) to enable LLM red-teaming.' }],
+    };
+  }
+
   const reportName = `garak-report-${Date.now()}.jsonl`;
   const reportPath = path.resolve(process.cwd(), reportName);
 

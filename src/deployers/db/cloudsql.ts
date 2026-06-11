@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { logger } from '../../logger.js';
+import { emitInfraEvent } from '../../audit.js';
 import { DatabaseEngine } from '../../types.js';
 import { ExecFn } from '../gcp.js';
 import { promisify } from 'util';
@@ -67,8 +68,10 @@ export class CloudSqlProvisioner implements DbProvisioner {
     try {
       logger.info(`Deleting ephemeral Cloud SQL instance ${handle}…`);
       await this.execFn(`gcloud sql instances delete ${handle} --quiet${proj}`);
+      emitInfraEvent('DB_TEARDOWN', 'OK', { provider: this.name, handle });
     } catch (e: any) {
       logger.error(`Failed to delete Cloud SQL instance ${handle} (may incur cost — delete manually): ${e.message}`);
+      emitInfraEvent('DB_TEARDOWN', 'FAIL', { provider: this.name, handle, error: e.message });
     }
   }
 }

@@ -675,6 +675,17 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
     }
   }
 
+  // Persist each scanner that errored to the audit log. The per-scanner `error` string is otherwise
+  // console-only, so a failed run (e.g. ZAP/Garak) can't be diagnosed from the logs afterward.
+  for (const r of deduplicatedResults) {
+    if (r.success === false || r.error) {
+      logger.warn(`SCANNER_FAILURE: ${r.scannerName}`, {
+        auditEvent: 'SCANNER_FAILURE', scanner: r.scannerName,
+        skipped: !!r.skipped, error: r.error || 'failed without an error message',
+      });
+    }
+  }
+
   emitAuditEnd(executionId, !failedGate, score, totalIssuesFound, summarizeScannerMetrics(deduplicatedResults));
 
   if (options.throwOnFailure && failedGate) {
@@ -697,14 +708,13 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
         logger.error(`Teardown failed for ${serviceToTear}: ${e.message}`);
       }
     }
-    // Destroy the auto-provisioned database too (even if the deploy itself failed).
+    // Destroy the auto-provisioned database too (even if the deploy itself failed). The provisioner
+    // emits the structured DB_TEARDOWN event itself (so the SIGINT/SIGTERM path records it too).
     if (provisionedDb && provisioner) {
       try {
         await provisioner.teardown(provisionedDb.handle); // never throws, but guard anyway
-        emitInfraEvent('DB_TEARDOWN', 'OK', { provider: provisioner.name, handle: provisionedDb.handle });
         console.log(chalk.gray('🗄️  Ephemeral database torn down.'));
       } catch (e: any) {
-        emitInfraEvent('DB_TEARDOWN', 'FAIL', { provider: provisioner.name, handle: provisionedDb.handle, error: e.message });
         logger.error(`Database teardown failed: ${e.message}`);
       }
     }

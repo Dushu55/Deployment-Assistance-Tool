@@ -14,6 +14,7 @@ import os from 'os';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { runDatPipeline } from './orchestrator.js';
+import { flushLogger } from './logger.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
 import { EnvironmentDetector, databaseSummaryLine } from './env.js';
 import { isProfileName, PROFILE_NAMES } from './profiles.js';
@@ -96,26 +97,23 @@ program
   .option('--auto-fix', 'Apply autonomous AST auto-fixes to the working tree (mutates files; verified by your test suite and reverted on failure)')
   .option('--no-publish', 'Do not copy the HTML report into the local ~/.dat/reports library or print a hosted link')
   .action(async (options) => {
+    // Flush the async file logger before exiting so the final audit lines (e.g. DB_TEARDOWN, the
+    // last write in the deploy teardown) aren't truncated by process.exit.
+    const finish = async (code: number): Promise<never> => { await flushLogger(); process.exit(code); };
     try {
       if (options.profile && !isProfileName(options.profile)) {
         console.log(chalk.red.bold(`\n❌ Unknown profile "${options.profile}". Valid: ${PROFILE_NAMES.join(', ')}.`));
-        process.exit(1);
+        return finish(1);
       }
       const { report, failedGate } = await runDatPipeline({ ...options });
-      
+
       // If report is null, it was a dry run or no scanners configured.
-      if (!report) {
-        process.exit(0);
-      }
-      
-      if (failedGate) {
-        process.exit(1);
-      } else {
-        process.exit(0);
-      }
+      if (!report) return finish(0);
+
+      return finish(failedGate ? 1 : 0);
     } catch (error: any) {
       console.log(chalk.red.bold('\n❌ Pipeline execution failed:'), error.message);
-      process.exit(1);
+      return finish(1);
     }
   });
 

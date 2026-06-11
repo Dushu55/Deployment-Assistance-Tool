@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { logger } from '../../logger.js';
+import { emitInfraEvent } from '../../audit.js';
 import { DatabaseEngine } from '../../types.js';
 import { DbProvisioner, ProvisionedDb } from './provisioner.js';
 
@@ -68,12 +69,17 @@ export class NeonProvisioner implements DbProvisioner {
 
   async teardown(handle: string): Promise<void> {
     // Never throw from teardown — a failed cleanup must not crash the pipeline (but Neon
-    // auto-suspends and is free, so a missed delete costs nothing).
+    // auto-suspends and is free, so a missed delete costs nothing). Emit the structured
+    // DB_TEARDOWN event HERE (not at the call site) so every teardown path — the normal
+    // finally and the SIGINT/SIGTERM emergency cleanup — records it consistently, mirroring
+    // how the GCP deployer emits DEPLOY_TEARDOWN from inside its own teardown().
     try {
       await this.api(`/projects/${handle}`, 'DELETE');
       logger.info(`Deleted ephemeral Neon project ${handle}.`);
+      emitInfraEvent('DB_TEARDOWN', 'OK', { provider: this.name, handle });
     } catch (e: any) {
       logger.error(`Failed to delete Neon project ${handle}: ${e.message}`);
+      emitInfraEvent('DB_TEARDOWN', 'FAIL', { provider: this.name, handle, error: e.message });
     }
   }
 }
