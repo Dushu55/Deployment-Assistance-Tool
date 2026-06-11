@@ -78,7 +78,10 @@ export const CONFIG_KEYS: Record<string, string> = {
   'Clippy': 'clippy',
   'cargo-audit': 'cargoAudit',
   'Gitleaks (Secrets)': 'gitleaks',
-  'Logic Tests': 'logicTests'
+  'Logic Tests': 'logicTests',
+  'HTTP Security Headers': 'httpHeaders',
+  'npm audit': 'npmAudit',
+  'Dependency Freshness': 'depFreshness'
 };
 
 /**
@@ -663,7 +666,8 @@ export async function runDatPipeline(options: DatRunOptions): Promise<{ report: 
         score,
         gate: failedGate ? 'fail' : 'pass',
         summary: report.summary,
-        timestamp: report.timestamp
+        timestamp: report.timestamp,
+        results: report.results
       });
       console.log(chalk.gray(`📰 Report published: ${url}  (run \`dat serve\` to view)`));
     } catch (e: any) {
