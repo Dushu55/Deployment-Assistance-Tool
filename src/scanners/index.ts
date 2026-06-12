@@ -24,6 +24,9 @@ import { clippyScanner } from './clippy.js';
 import { cargoAuditScanner } from './cargoAudit.js';
 import { gitleaksScanner } from './secrets.js';
 import { logicTestsScanner } from './logicTests.js';
+import { httpHeadersScanner } from './httpHeaders.js';
+import { npmAuditScanner } from './npmAudit.js';
+import { depFreshnessScanner } from './depFreshness.js';
 import { Scanner } from '../types.js';
 
 export const ALL_SCANNERS: Scanner[] = [
@@ -52,5 +55,8 @@ export const ALL_SCANNERS: Scanner[] = [
   clippyScanner,
   cargoAuditScanner,
   gitleaksScanner,
-  logicTestsScanner
+  logicTestsScanner,
+  httpHeadersScanner,
+  npmAuditScanner,
+  depFreshnessScanner
 ];

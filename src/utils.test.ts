@@ -49,6 +49,7 @@ test('mapSeverity', async (t) => {
   await t.test('maps known severities', () => {
     assert.strictEqual(mapSeverity('critical'), 'CRITICAL');
     assert.strictEqual(mapSeverity('FATAL'), 'CRITICAL');
+    assert.strictEqual(mapSeverity('blocker'), 'CRITICAL'); // SonarQube BLOCKER → CRITICAL (not the HIGH fallback)
     assert.strictEqual(mapSeverity('High'), 'HIGH');
     assert.strictEqual(mapSeverity('error'), 'HIGH');
     assert.strictEqual(mapSeverity('warning'), 'MEDIUM');

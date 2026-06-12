@@ -16,7 +16,6 @@ tiers here match the readiness ladder DAT prints: ⛔ NOT PRODUCTION-SAFE → �
 | **Dependency manifest** | Supply-chain CVE scanning (Trivy, OSV) | `package.json`, `requirements.txt`, `go.mod`, `pom.xml`, `Cargo.lock`, `Gemfile`, or `composer.json` at the root | Commit your manifest at the repo root |
 | **Test suite** | Logic Tests run them; failing tests block the gate | A known test command exists for the detected language (`npm test`, `pytest`, `go test`, …) | Have runnable tests + the standard script |
 | **DAST target** | Dynamic scans (ZAP, k6, Garak) need a live app | `--url <url>`, or `--deploy`, or `deployer.enabled: true` | Pass `--url`, or use `--deploy` |
-| **`.dat.config.yaml`** | Pins the profile, severity gate, and scanner selection | File present at the root | `dat init` (roadmap), or copy the template config |
 | **Dockerfile** | Container hardening (Hadolint) + the `--deploy` image build | `Dockerfile` at the workspace root | Add a Dockerfile (a Next.js + Prisma example lives in [TESTING.md](TESTING.md)) |
 
 ## 🟡 Highly advised (close these to reach Enterprise-Grade)
@@ -31,6 +30,7 @@ tiers here match the readiness ladder DAT prints: ⛔ NOT PRODUCTION-SAFE → �
 
 | Requirement | Why it matters | How DAT detects it |
 |---|---|---|
+| **`.dat.config.yaml`** | Customizes scanner selection, severity gate, and org policy. Optional — DAT applies safe defaults without it, so its absence is **not** a production-safety gap (it's DAT's own config, not a property of your app). | File present at the root |
 | **LLM eval config** | Prompt accuracy / red-teaming (Promptfoo, Garak) | `promptfooconfig.yaml` / `.yml` |
 | **API test directory** | API regression coverage (Keploy) | a `keploy/` directory |
 

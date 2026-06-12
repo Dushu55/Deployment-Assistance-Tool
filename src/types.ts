@@ -51,7 +51,7 @@ export interface DatConfig {
     trivy?: { enabled: boolean; generateSbom?: boolean; sbomPath?: string };
     hadolint?: { enabled: boolean; target?: string };
     dockle?: { enabled: boolean; imageName?: string };
-    sonarqube?: { enabled: boolean };
+    sonarqube?: { enabled: boolean; projectKey?: string; hostUrl?: string; sources?: string; organization?: string };
     checkov?: { enabled: boolean; targetDir?: string };
     osv?: { enabled: boolean; targetDir?: string };
     zap?: { enabled: boolean; failOnMissingTarget?: boolean };
@@ -73,6 +73,9 @@ export interface DatConfig {
     clippy?: { enabled: boolean };
     cargoAudit?: { enabled: boolean };
     gitleaks?: { enabled: boolean; targetDir?: string };
+    httpHeaders?: { enabled: boolean };
+    npmAudit?: { enabled: boolean; targetDir?: string };
+    depFreshness?: { enabled: boolean };
   };
   failOn: Severity[]; // e.g., ['CRITICAL', 'HIGH']
   profile?: ProfileName;                  // one-word scanner selection; overrides per-scanner enabled flags
@@ -119,6 +122,7 @@ export interface DatConfig {
       cpu?: string;              // default '1'
       memory?: string;           // default '512Mi'
       maxInstances?: number;     // default 1
+      allowUnauthenticated?: boolean; // deploy the ephemeral preview public (no IAM token); default false
     };
   };
 }

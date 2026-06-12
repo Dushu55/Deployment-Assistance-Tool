@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import type { ScannerResult } from '../types.js';
 
 // Shared, home-based report library (outside any git repo) that `dat scan` publishes to and
 // `dat serve` hosts. Reports are a per-app vulnerability map, so everything here is owner-only
@@ -66,11 +67,17 @@ export function publishReport(opts: {
   gate: 'pass' | 'fail';
   summary: ReportSummary;
   timestamp: string;
+  /** Per-scanner results, written to a `<slug>.json` sidecar so the UI can drill into findings. */
+  results?: ScannerResult[];
 }): string {
   const dir = ensureDir();
   const slug = `${slugify(opts.appName)}-${compactStamp(opts.timestamp)}`;
   const file = `${slug}.html`;
   fs.writeFileSync(path.join(dir, file), fs.readFileSync(opts.htmlPath, 'utf8'), { mode: 0o600 });
+
+  // Structured findings sidecar (same owner-only mode as the HTML — it carries the same data).
+  // Keyed by the HTML basename swapped to `.json`; resolveReportSidecar() reads it back.
+  fs.writeFileSync(path.join(dir, `${slug}.json`), JSON.stringify(opts.results ?? [], null, 2), { mode: 0o600 });
 
   const entry: ReportEntry = {
     slug, appName: opts.appName, file, timestamp: opts.timestamp,
@@ -78,9 +85,12 @@ export function publishReport(opts: {
   };
   const entries = [entry, ...readManifest().filter(e => e.file !== file)];
 
-  // Retention: keep the newest RETENTION; delete the older report files from disk.
+  // Retention: keep the newest RETENTION; delete the older report files (HTML + JSON sidecar).
   const removed = entries.splice(RETENTION);
-  for (const e of removed) { try { fs.unlinkSync(path.join(dir, e.file)); } catch { /* already gone */ } }
+  for (const e of removed) {
+    try { fs.unlinkSync(path.join(dir, e.file)); } catch { /* already gone */ }
+    try { fs.unlinkSync(path.join(dir, e.file.replace(/\.html$/, '.json'))); } catch { /* none / already gone */ }
+  }
 
   fs.writeFileSync(manifestPath(), JSON.stringify(entries, null, 2), { mode: 0o600 });
   return `http://localhost:${serverPort()}/r/${file}`;

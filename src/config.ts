@@ -16,7 +16,11 @@ const DEFAULT_CONFIG: DatConfig = {
     hadolint: { enabled: true },
     dockle: { enabled: true },
     gitleaks: { enabled: true },
-    logicTests: { enabled: true, failOnMissingTests: true }
+    logicTests: { enabled: true, failOnMissingTests: true },
+    // Zero-cost checks (no external binary beyond npm, no API keys, no spend).
+    httpHeaders: { enabled: true },
+    npmAudit: { enabled: true },
+    depFreshness: { enabled: true }
   },
   failOn: ['CRITICAL', 'HIGH']
 };

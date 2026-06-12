@@ -110,7 +110,12 @@ export function extractReactComponents(workspaceRoot: string): ExtractionResult 
           url: url || null,
           hasErrorHandling: /\.catch\s*\(/.test(windowText) || /\btry\s*\{/.test(before),
           hasTimeout: /\bsignal\s*:|AbortController|timeout\s*:/.test(windowText),
-          hasAuthHeader: /authorization/i.test(windowText)
+          hasAuthHeader: /authorization/i.test(windowText),
+          // Same-origin relative calls (path starting with "/") auto-send the session cookie, and an
+          // explicit credentials:'include'/'same-origin' does too — both are cookie-authenticated and
+          // need no Authorization header, so the cross-stack check must not flag them as a mismatch.
+          hasCookieAuth: (typeof url === 'string' && url.startsWith('/')) ||
+            /credentials\s*:\s*["'`](include|same-origin)["'`]/i.test(windowText)
         }
       });
     };

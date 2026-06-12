@@ -4,6 +4,79 @@ import { isSafeUrl } from '../utils/security.js';
 import fs from 'fs';
 import path from 'path';
 
+/** A "target isn't serving 200s" finding — used by both the pre-flight probe and the summary eval. */
+function unreachableFinding(targetUrl: string, detail: string): Issue {
+  return {
+    id: 'TARGET-UNREACHABLE',
+    severity: 'HIGH',
+    message: `Load-test target is not serving HTTP 200 (${detail}); performance under load could not be measured. ` +
+      'This usually means the deployment did not boot (e.g. missing runtime env/DATABASE_URL), an auth/IAM block, or a wrong path — not that the app is slow.',
+    file: targetUrl,
+    source: 'k6',
+    category: 'robustness',
+    remediation: 'Confirm the deployed target boots and serves HTTP 200 (runtime secrets/DATABASE_URL, networking, and auth/IAM), then re-run the load test.',
+  };
+}
+
+/**
+ * Turn a k6 summary into findings. Pure (no I/O) so it is unit-testable.
+ *
+ * Correctness rule: if the target failed the `status==200` check for the MAJORITY of requests, the run
+ * measured error responses, not performance — so a "high p95 latency" reading is meaningless (it's the
+ * latency of errors). In that case we emit a single TARGET-UNREACHABLE finding (pointing at deploy/auth/DB
+ * misconfig) and SUPPRESS the latency finding. Latency is only reported when most requests succeeded.
+ */
+export function evaluateK6Summary(
+  summary: any,
+  opts: { thresholdMs: number; targetUrl: string; probeStatus?: number | null }
+): Issue[] {
+  const issues: Issue[] = [];
+  const p95: number | undefined = summary?.metrics?.http_req_duration?.['p(95)'];
+  const passRate: number | undefined = summary?.metrics?.checks?.value;
+  const failPct = passRate !== undefined ? (1 - passRate) * 100 : undefined;
+  const probeNote = (opts.probeStatus !== undefined && opts.probeStatus !== null)
+    ? ` (pre-flight GET → HTTP ${opts.probeStatus})` : '';
+
+  // Target effectively down (majority of requests non-200): latency is not trustworthy here.
+  if (passRate !== undefined && passRate < 0.5) {
+    issues.push(unreachableFinding(opts.targetUrl, `${failPct!.toFixed(2)}% of requests returned non-200${probeNote}`));
+    return issues;
+  }
+
+  // Some requests failed, but the target is mostly up — a real partial-availability finding.
+  if (passRate !== undefined && passRate < 1) {
+    issues.push({
+      id: 'HTTP-CHECKS-FAILED',
+      severity: 'HIGH',
+      message: `${failPct!.toFixed(2)}% of HTTP requests failed the status==200 check${probeNote}.`,
+      file: opts.targetUrl,
+      source: 'k6',
+      category: 'robustness',
+    });
+  }
+
+  // Latency is only meaningful when most requests actually succeeded.
+  if (p95 && p95 > opts.thresholdMs) {
+    issues.push({
+      id: 'HIGH-LATENCY-P95',
+      severity: 'HIGH',
+      message: `p95 Latency (${p95.toFixed(2)}ms) exceeded threshold of ${opts.thresholdMs}ms.`,
+      file: opts.targetUrl,
+      source: 'k6',
+      category: 'robustness',
+    });
+  } else if (p95) {
+    issues.push({
+      id: 'LATENCY-OK',
+      severity: 'INFO',
+      message: `p95 Latency (${p95.toFixed(2)}ms) is within acceptable limits.`,
+      source: 'k6',
+    });
+  }
+
+  return issues;
+}
+
 export async function runK6(targetUrl?: string, thresholdMs: number = 500, authToken?: string, failOnMissingTarget: boolean = true): Promise<ScannerResult> {
   const startTime = Date.now();
 
@@ -33,6 +106,28 @@ export async function runK6(targetUrl?: string, thresholdMs: number = 500, authT
       durationMs: Date.now() - startTime,
       issues: [],
       error: `Invalid or restricted k6 target URL. SSRF protection blocked access to: ${targetUrl}`
+    };
+  }
+
+  // Pre-flight reachability probe: one authenticated request tells us whether the target serves 200s
+  // at all. If it doesn't, a full 120s load test would only measure error responses — short-circuit
+  // with a clear, actionable reachability finding instead of a misleading "high latency" result.
+  let probeStatus: number | null = null;
+  try {
+    const headers: Record<string, string> = {};
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const res = await fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(15000) });
+    probeStatus = res.status;
+    if (res.status < 200 || res.status >= 300) {
+      return {
+        scannerName: 'k6 Load Test', success: true, durationMs: Date.now() - startTime,
+        issues: [unreachableFinding(targetUrl, `pre-flight GET returned HTTP ${res.status}`)],
+      };
+    }
+  } catch (e) {
+    return {
+      scannerName: 'k6 Load Test', success: true, durationMs: Date.now() - startTime,
+      issues: [unreachableFinding(targetUrl, `pre-flight request failed: ${(e as Error).message}`)],
     };
   }
 
@@ -91,36 +186,7 @@ export default function () {
     }
 
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-    const issues: Issue[] = [];
-    
-    const p95Latency = summary.metrics?.http_req_duration?.['p(95)'];
-    
-    if (p95Latency && p95Latency > thresholdMs) {
-        issues.push({
-            id: 'HIGH-LATENCY-P95',
-            severity: 'HIGH',
-            message: `p95 Latency (${p95Latency.toFixed(2)}ms) exceeded threshold of ${thresholdMs}ms.`,
-            file: targetUrl,
-            source: 'k6'
-        });
-    } else if (p95Latency) {
-        issues.push({
-            id: 'LATENCY-OK',
-            severity: 'INFO',
-            message: `p95 Latency (${p95Latency.toFixed(2)}ms) is within acceptable limits.`,
-            source: 'k6'
-        });
-    }
-
-    const passRate = summary.metrics?.checks?.value;
-    if (passRate !== undefined && passRate < 1) {
-        issues.push({
-            id: 'HTTP-CHECKS-FAILED',
-            severity: 'HIGH',
-            message: `${((1 - passRate) * 100).toFixed(2)}% of HTTP requests failed the status==200 check.`,
-            source: 'k6'
-        });
-    }
+    const issues = evaluateK6Summary(summary, { thresholdMs, targetUrl, probeStatus });
 
     // Cleanup
     fs.unlinkSync(scriptPath);

@@ -13,19 +13,22 @@ export const PROFILES: Record<Exclude<ProfileName, 'full'>, string[]> = {
   // Fast PR gate: static analysis + secrets + functional tests only.
   quick: ['semgrep', 'gitleaks', 'logicTests'],
 
-  // Balanced default: quick + SCA + IaC + container + coverage + language SAST/SCA.
+  // Balanced default: quick + SCA + IaC + container + coverage + language SAST/SCA
+  // + the zero-cost checks (headers, npm advisories, dependency freshness).
   standard: [
     'semgrep', 'gitleaks', 'logicTests',
     'trivy', 'osv', 'checkov', 'hadolint', 'dockle', 'jest', 'sonarqube',
     'bandit', 'pipAudit', 'gosec', 'govulncheck', 'spotbugs',
-    'dependencyCheck', 'dotnetSast', 'dotnetSca', 'clippy', 'cargoAudit'
+    'dependencyCheck', 'dotnetSast', 'dotnetSca', 'clippy', 'cargoAudit',
+    'httpHeaders', 'npmAudit', 'depFreshness'
   ],
 
   // Security-focused: SAST + SCA + IaC + secrets + DAST + LLM red-teaming.
   security: [
     'semgrep', 'gitleaks', 'trivy', 'osv', 'checkov', 'zap', 'garak',
     'bandit', 'pipAudit', 'gosec', 'govulncheck', 'spotbugs',
-    'dependencyCheck', 'dotnetSast', 'dotnetSca', 'clippy', 'cargoAudit'
+    'dependencyCheck', 'dotnetSast', 'dotnetSca', 'clippy', 'cargoAudit',
+    'httpHeaders', 'npmAudit'
   ]
 };
 

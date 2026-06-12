@@ -3,7 +3,13 @@ import { ComponentNode, ComponentEdge, ExtractionResult, Extractor, nodeId } fro
 import { findFiles, lineAt, relPath } from '../fileScan.js';
 
 const CODE_EXTS = ['.js', '.ts', '.mjs', '.cjs'];
-const AUTH_HINT = /\b(auth|authenticate|authorize|protect|verifyToken|isAuthenticated|requireLogin|requireAuth|ensureLogged|jwt|passport|getServerSession|getToken)\b/i;
+// Identifier hints for authentication. Includes cookie/session-based auth (getSession, verifySession,
+// cookies()) — not just bearer-token middleware — so a Next.js route that gates on a session cookie is
+// recognised as authenticated instead of being mis-flagged COMP-ENDPOINT-NOAUTH.
+const AUTH_HINT = /\b(auth|authenticate|authorize|protect|verifyToken|isAuthenticated|requireLogin|requireAuth|ensureLogged|jwt|passport|getServerSession|getSession|verifySession|requireSession|getToken)\b|cookies\s*\(/i;
+
+// A Next.js edge middleware lives in middleware.ts (or a re-exported proxy.ts) and guards path prefixes.
+const MIDDLEWARE_FILE = /(^|[\\/])(middleware|proxy)\.(t|j|mj)s$/i;
 
 /**
  * Heuristic REST endpoint extractor for Express/Fastify-style route registrations and Next.js
@@ -14,6 +20,9 @@ export function extractApiEndpoints(workspaceRoot: string): ExtractionResult {
   const nodes: ComponentNode[] = [];
   const edges: ComponentEdge[] = [];
   const files = findFiles(workspaceRoot, CODE_EXTS);
+  // Path prefixes guarded by an edge middleware — endpoints under them are authenticated even when the
+  // handler itself has no inline auth check.
+  const guarded = guardedPrefixesFrom(files);
   let index = 0;
 
   for (const file of files) {
@@ -31,13 +40,13 @@ export function extractApiEndpoints(workspaceRoot: string): ExtractionResult {
       const afterPath = m.index! + m[0].length;
       const nl = content.indexOf('\n', afterPath);
       const argsWindow = content.slice(afterPath, nl === -1 ? content.length : nl);
-      nodes.push(buildEndpoint(method, routePath, rel, line, index++, AUTH_HINT.test(argsWindow)));
+      nodes.push(buildEndpoint(method, routePath, rel, line, index++, AUTH_HINT.test(argsWindow) || underGuardedPrefix(routePath, guarded)));
     }
 
     // --- Next.js app router: export async function GET(...) in a route.ts ---
     if (/\/route\.(t|j)s$/.test(rel) || /[\\/]route\.(t|j)s$/.test(file)) {
       const routePath = nextAppPath(rel);
-      const fileHasAuth = AUTH_HINT.test(content);
+      const fileHasAuth = AUTH_HINT.test(content) || underGuardedPrefix(routePath, guarded);
       for (const m of content.matchAll(/export\s+(?:async\s+)?(?:function|const)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g)) {
         const line = lineAt(content, m.index!);
         nodes.push(buildEndpoint(m[1], routePath, rel, line, index++, fileHasAuth));
@@ -48,7 +57,8 @@ export function extractApiEndpoints(workspaceRoot: string): ExtractionResult {
     if (/(^|[\\/])pages[\\/]api[\\/]/.test(rel) && /export\s+default\b/.test(content)) {
       const m = content.match(/export\s+default\b/)!;
       const line = lineAt(content, content.indexOf(m[0]));
-      nodes.push(buildEndpoint('ANY', nextPagesApiPath(rel), rel, line, index++, AUTH_HINT.test(content)));
+      const apiPath = nextPagesApiPath(rel);
+      nodes.push(buildEndpoint('ANY', apiPath, rel, line, index++, AUTH_HINT.test(content) || underGuardedPrefix(apiPath, guarded)));
     }
   }
 
@@ -64,6 +74,41 @@ export function extractApiEndpoints(workspaceRoot: string): ExtractionResult {
         : 'Heuristic route detection (V1): auth-middleware inferred by identifier hints; dynamic route registration not traced.'
     }
   };
+}
+
+/**
+ * Collect the path prefixes guarded by a Next.js edge middleware (middleware.ts / proxy.ts). We read
+ * the `matcher` config and explicit `pathname.startsWith('/...')` / `pathname === '/...'` checks — the
+ * standard ways middleware scopes itself — and only when the file actually performs auth. Endpoints
+ * under these prefixes are treated as authenticated even with no inline check in the handler.
+ */
+function guardedPrefixesFrom(files: string[]): string[] {
+  const prefixes = new Set<string>();
+  for (const file of files) {
+    if (!MIDDLEWARE_FILE.test(file.replace(/\\/g, '/'))) continue;
+    let content: string;
+    try { content = fs.readFileSync(file, 'utf8'); } catch { continue; }
+    if (!AUTH_HINT.test(content)) continue; // a middleware that doesn't auth doesn't "guard"
+    for (const cfg of content.matchAll(/matcher\s*:\s*\[([^\]]*)\]/g))
+      for (const lit of cfg[1].matchAll(/["'`]([^"'`]+)["'`]/g)) addGuardedPrefix(prefixes, lit[1]);
+    for (const m of content.matchAll(/startsWith\s*\(\s*["'`](\/[^"'`]*)["'`]/g)) addGuardedPrefix(prefixes, m[1]);
+    for (const m of content.matchAll(/pathname\s*===\s*["'`](\/[^"'`]*)["'`]/g)) addGuardedPrefix(prefixes, m[1]);
+  }
+  return [...prefixes];
+}
+
+function addGuardedPrefix(set: Set<string>, raw: string): void {
+  const p = raw.replace(/[:*()].*$/, '').replace(/\/+$/, ''); // strip Next matcher regex suffixes (/:path*, (.*) …)
+  if (!p || p === '/') return;
+  // A login/asset path appearing in middleware is not a "guarded API prefix".
+  if (/(^|\/)(login|register|signin|sign-in|signup|sign-up|_next|favicon|static|public|assets)\b/i.test(p)) return;
+  set.add(normalizePath(p));
+}
+
+function underGuardedPrefix(routePath: string, prefixes: string[]): boolean {
+  if (prefixes.length === 0) return false;
+  const np = normalizePath(routePath);
+  return prefixes.some(pre => np === pre || np.startsWith(pre + '/'));
 }
 
 function buildEndpoint(method: string, path: string, file: string, line: number, index: number, hasAuth: boolean): ComponentNode {

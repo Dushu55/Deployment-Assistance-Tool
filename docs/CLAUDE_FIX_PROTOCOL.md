@@ -11,11 +11,11 @@ Generate it with:
 node dist/index.js scan --fix-manifest results/dat-fix-manifest.json
 ```
 
-## Manifest schema (v1.0)
+## Manifest schema (v1.1)
 
 ```jsonc
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "tool": "Deployment Assist Tool (DAT)",
   "generatedAt": "2026-05-30T00:00:00.000Z",
   "gate": {
@@ -24,8 +24,12 @@ node dist/index.js scan --fix-manifest results/dat-fix-manifest.json
     "readinessScore": 42             // 0–100 health indicator (not the gate)
   },
   "summary": { "critical": 1, "high": 1, "medium": 1, "low": 0, "info": 1 },
-  "coverageGaps": [                  // scanners that did NOT run — coverage is incomplete
-    { "scanner": "Trivy", "reason": "Required tool(s) not found on PATH: trivy" }
+  "coverageGaps": [                  // dimensions NOT assessed — coverage is incomplete
+    { "scanner": "Trivy", "reason": "Required tool(s) not found on PATH: trivy" },
+    { "scanner": "OWASP ZAP", "reason": "DAST not run — the deployed app was not probed for runtime/exploitable vulnerabilities." }
+  ],
+  "groups": [                        // rule ids occurring >1× — fix together (one codemod)
+    { "key": "typescript:S7764", "title": "typescript:S7764", "count": 15, "severity": "LOW", "category": "best-practice" }
   ],
   "findings": [
     {
@@ -46,7 +50,9 @@ node dist/index.js scan --fix-manifest results/dat-fix-manifest.json
       "suggestedFix": "remove eval", // may be null
       "verification": { "command": "npm test" }, // run after fixing to confirm
       "dependencies": [],            // findingIds to fix first (ordering hints)
-      "confidence": "high",          // deterministic scanners are high; LLM evaluators will vary
+      "confidence": "high",          // high = deterministic scanner; medium = heuristic component eval / load; low = cross-stack coherence inference
+      "falsePositiveLikelihood": "low", // low | medium | high — raised for findings in test/generated/output files & heuristic checks
+      "group": "rules.eval",         // shared rule id; matches a `groups[].key` when it repeats
       "status": "open"
     }
   ]
@@ -57,8 +63,14 @@ Notes:
 - `findings` are **sorted gate-blocking-first, then by severity**, so fixing top-down clears the
   deploy blocker fastest.
 - `INFO` issues are intentionally **excluded** — they are not actionable.
-- `coverageGaps` are surfaced deliberately: a missing scanner is *not* a clean pass. Treat a gap in
-  a security/test scanner as a reason to install the tool and re-run, not to ignore.
+- `coverageGaps` are surfaced deliberately: a missing scanner is *not* a clean pass. They include both
+  selected-but-unavailable tools AND language-agnostic security dimensions (DAST, secret-scanning,
+  HTTP-header hardening) that did not run at all. Treat a gap as a reason to run the tool, not to ignore.
+- **Triage with `confidence` + `falsePositiveLikelihood`**: a `confidence: "low"` / `falsePositiveLikelihood: "high"`
+  finding (e.g. a heuristic coherence check, or a lint hit inside a test file) should be **verified before fixing** —
+  do not blindly apply its `suggestedFix`. High-confidence/low-FP findings are safe to action directly.
+- **Batch via `groups`**: when a rule id appears in `groups` with a high `count`, fix all its occurrences with one
+  consistent change rather than treating each finding as independent work.
 
 ## Agent workflow
 

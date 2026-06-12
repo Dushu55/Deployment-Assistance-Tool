@@ -80,4 +80,10 @@ test('extractReactComponents', async (t) => {
     const profile = calls.find(n => (n.attributes.url as string) === '/api/profile');
     assert.strictEqual(profile!.attributes.method, 'GET');
   });
+
+  await t.test('same-origin relative calls are marked cookie-authenticated', () => {
+    const calls = byKind('ApiCall');
+    assert.strictEqual(calls.find(n => (n.attributes.url as string) === '/api/login')!.attributes.hasCookieAuth, true);
+    assert.strictEqual(calls.find(n => (n.attributes.url as string) === '/api/profile')!.attributes.hasCookieAuth, true);
+  });
 });

@@ -67,3 +67,40 @@ test('extractApiEndpoints', async (t) => {
     assert.strictEqual(health!.attributes.method, 'ANY');
   });
 });
+
+test('extractApiEndpoints — cookie/session and middleware-guarded auth', async (t) => {
+  const dir = tmpWorkspace({
+    // Per-route session check (cookie auth) — must count as authenticated.
+    'app/api/account/route.ts': `
+      import { getSession } from '../../../lib/auth';
+      export async function PATCH() { const s = await getSession(); if (!s) return; }
+    `,
+    // Guarded purely by edge middleware, no inline check in the handler.
+    'middleware.ts': `
+      import { verifySession } from './lib/auth';
+      export const config = { matcher: ['/api/admin/:path*'] };
+      export async function middleware(req) {
+        if (req.nextUrl.pathname.startsWith('/api/admin') && !verifySession(req)) return Response.redirect('/login');
+      }
+    `,
+    'app/api/admin/orders/[id]/route.ts': `export async function PATCH() { return Response.json({}); }`,
+    // Genuinely unauthenticated mutating endpoint — should stay unauth.
+    'app/api/orders/route.ts': `export async function POST() { return Response.json({}); }`,
+  });
+  const eps = extractApiEndpoints(dir).nodes;
+  fs.rmSync(dir, { recursive: true, force: true });
+
+  await t.test('per-route getSession counts as authenticated', () => {
+    const acct = eps.find(n => n.attributes.path === '/api/account');
+    assert.strictEqual(acct!.attributes.hasAuthMiddleware, true);
+  });
+  await t.test('endpoint under a middleware-guarded prefix counts as authenticated', () => {
+    const admin = eps.find(n => (n.attributes.path as string).startsWith('/api/admin'));
+    assert.ok(admin);
+    assert.strictEqual(admin!.attributes.hasAuthMiddleware, true);
+  });
+  await t.test('an endpoint outside any guard stays unauthenticated', () => {
+    const orders = eps.find(n => n.attributes.path === '/api/orders' && n.attributes.method === 'POST');
+    assert.strictEqual(orders!.attributes.hasAuthMiddleware, false);
+  });
+});

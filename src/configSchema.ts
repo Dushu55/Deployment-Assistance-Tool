@@ -46,7 +46,8 @@ export const DatConfigSchema = z.object({
       env: z.record(z.string(), z.string()).optional(),
       cpu: z.string().optional(),
       memory: z.string().optional(),
-      maxInstances: z.number().int().positive().optional()
+      maxInstances: z.number().int().positive().optional(),
+      allowUnauthenticated: z.boolean().optional()
     }).optional()
   }).optional(),
   preflight: z.object({

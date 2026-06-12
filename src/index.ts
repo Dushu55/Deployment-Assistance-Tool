@@ -14,12 +14,14 @@ import os from 'os';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { runDatPipeline } from './orchestrator.js';
+import { flushLogger } from './logger.js';
 import { buildComponentModel, writeComponentModel } from './components/builder.js';
 import { EnvironmentDetector, databaseSummaryLine } from './env.js';
 import { isProfileName, PROFILE_NAMES } from './profiles.js';
 import { loadConfig } from './config.js';
 import { checkReadiness, printReadiness } from './readiness.js';
 import { startReportServer } from './server/serve.js';
+import { startUiServer } from './server/ui.js';
 import { serverPort } from './server/library.js';
 
 const program = new Command();
@@ -74,6 +76,7 @@ program
   .option('-c, --config <path>', 'Path to config file', '.dat.config.yaml')
   .option('-u, --url <url>', 'Target URL for DAST scanning (e.g. OWASP ZAP)')
   .option('--deploy', 'Provision an ephemeral GCP Cloud Run environment (scale-to-zero, minimal cost), scan it, then tear it down. Requires gcloud CLI + GCP_PROJECT_ID (or deployer.gcp.projectId in config). Ignored if --url is set.')
+  .option('--allow-unauthenticated', 'With --deploy: deploy the ephemeral preview PUBLIC (no IAM token) so the DAST scanner can reach it, then tear it down. Use when no service account is available to mint an identity token (e.g. a personal gcloud login). Default: private + IAM.')
   .option('--sarif <path>', 'Output results in SARIF format', 'results/dat-report.sarif')
   .option('--csv <path>', 'Output results in CSV format', 'results/dat-report.csv')
   .option('--pdf <path>', 'Output results in professional PDF format', 'results/dat-report.pdf')
@@ -90,30 +93,27 @@ program
   .option('--skip-component-eval', 'Disable per-component evaluators (fail-safe/robustness/coherence checks over the component graph)')
   .option('--llm-eval', 'Enable the LLM reasoning tier of the component evaluator (advisory; requires a Gemini backend — GEMINI_API_KEY or Vertex on a GCP project)')
   .option('--skip-preflight', 'Skip the application-readiness check at scan start')
-  .option('--strict-preflight', 'Abort the scan if a required input (Dockerfile / tests / DAST target / config) is missing')
+  .option('--strict-preflight', 'Abort the scan if a required input (Dockerfile / tests / DAST target / dependency manifest) is missing')
   .option('--auto-fix', 'Apply autonomous AST auto-fixes to the working tree (mutates files; verified by your test suite and reverted on failure)')
   .option('--no-publish', 'Do not copy the HTML report into the local ~/.dat/reports library or print a hosted link')
   .action(async (options) => {
+    // Flush the async file logger before exiting so the final audit lines (e.g. DB_TEARDOWN, the
+    // last write in the deploy teardown) aren't truncated by process.exit.
+    const finish = async (code: number): Promise<never> => { await flushLogger(); process.exit(code); };
     try {
       if (options.profile && !isProfileName(options.profile)) {
         console.log(chalk.red.bold(`\n❌ Unknown profile "${options.profile}". Valid: ${PROFILE_NAMES.join(', ')}.`));
-        process.exit(1);
+        return finish(1);
       }
       const { report, failedGate } = await runDatPipeline({ ...options });
-      
+
       // If report is null, it was a dry run or no scanners configured.
-      if (!report) {
-        process.exit(0);
-      }
-      
-      if (failedGate) {
-        process.exit(1);
-      } else {
-        process.exit(0);
-      }
+      if (!report) return finish(0);
+
+      return finish(failedGate ? 1 : 0);
     } catch (error: any) {
       console.log(chalk.red.bold('\n❌ Pipeline execution failed:'), error.message);
-      process.exit(1);
+      return finish(1);
     }
   });
 
@@ -190,6 +190,27 @@ program
     });
     server.on('error', (err: any) => {
       console.log(chalk.red.bold(`\n❌ Could not start report server on port ${port}: ${err.code === 'EADDRINUSE' ? 'port already in use' : err.message}`));
+      process.exit(1);
+    });
+  });
+
+program
+  .command('ui')
+  .description('Open a local web control panel (loopback only) to inspect an app\'s readiness, see what a scan needs, and view reports')
+  .option('-p, --port <port>', 'Port to listen on (default 4737, or DAT_PORT)')
+  .action((options) => {
+    const port = options.port ? parseInt(options.port, 10) : serverPort();
+    if (!Number.isInteger(port) || port <= 0 || port >= 65536) {
+      console.log(chalk.red.bold(`\n❌ Invalid --port "${options.port}".`));
+      process.exit(1);
+    }
+    const { server, token } = startUiServer(port);
+    server.on('listening', () => {
+      console.log(chalk.green.bold(`\n🛡️  DAT control panel: http://localhost:${port}/?t=${token}`));
+      console.log(chalk.gray('   Open the link above (token-gated, loopback only — Ctrl-C to stop).'));
+    });
+    server.on('error', (err: any) => {
+      console.log(chalk.red.bold(`\n❌ Could not start UI server on port ${port}: ${err.code === 'EADDRINUSE' ? 'port already in use' : err.message}`));
       process.exit(1);
     });
   });
