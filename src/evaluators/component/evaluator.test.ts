@@ -19,13 +19,20 @@ function node(kind: any, attributes: any, id = `${kind}:f:1:0`): ComponentNode {
 const ids = (g: ComponentGraph) => evaluateComponentGraph(g).issues.map(i => i.id);
 
 test('endpoint rules', async (t) => {
-  await t.test('unauthenticated state-changing endpoint -> HIGH security', () => {
-    const r = evaluateComponentGraph(graphOf([node('ApiEndpoint', { method: 'POST', isStateChanging: true, hasAuthMiddleware: false })]));
+  await t.test('unauth state-changing SENSITIVE endpoint -> HIGH security', () => {
+    const r = evaluateComponentGraph(graphOf([node('ApiEndpoint', { method: 'POST', path: '/api/admin/users', isStateChanging: true, hasAuthMiddleware: false })]));
     const f = r.issues.find(i => i.id === 'COMP-ENDPOINT-NOAUTH')!;
     assert.ok(f); assert.strictEqual(f.severity, 'HIGH'); assert.strictEqual(f.category, 'security');
   });
+  await t.test('unauth state-changing NON-sensitive endpoint -> MEDIUM (advisory, not gate-blocking)', () => {
+    const f = evaluateComponentGraph(graphOf([node('ApiEndpoint', { method: 'POST', path: '/api/orders', isStateChanging: true, hasAuthMiddleware: false })])).issues.find(i => i.id === 'COMP-ENDPOINT-NOAUTH')!;
+    assert.ok(f); assert.strictEqual(f.severity, 'MEDIUM');
+  });
+  await t.test('intentionally-public auth endpoint (login) is NOT flagged for no-auth', () => {
+    assert.ok(!ids(graphOf([node('ApiEndpoint', { method: 'POST', path: '/api/auth/login', isStateChanging: true, hasAuthMiddleware: false })])).includes('COMP-ENDPOINT-NOAUTH'));
+  });
   await t.test('authenticated endpoint is silent', () => {
-    assert.ok(!ids(graphOf([node('ApiEndpoint', { method: 'POST', isStateChanging: true, hasAuthMiddleware: true })])).includes('COMP-ENDPOINT-NOAUTH'));
+    assert.ok(!ids(graphOf([node('ApiEndpoint', { method: 'POST', path: '/api/admin/x', isStateChanging: true, hasAuthMiddleware: true })])).includes('COMP-ENDPOINT-NOAUTH'));
   });
   await t.test('ANY method flagged', () => {
     assert.ok(ids(graphOf([node('ApiEndpoint', { method: 'ANY', isStateChanging: false, hasAuthMiddleware: true })])).includes('COMP-ENDPOINT-ANY-MUTATING'));
@@ -80,16 +87,29 @@ test('network rules', async (t) => {
   });
 });
 
-test('cross-stack auth-mismatch (walks calls edges)', () => {
-  const g = graphOf(
-    [
-      node('ApiCall', { method: 'GET', url: '/api/me', hasErrorHandling: true, hasTimeout: true, hasAuthHeader: false }, 'ApiCall:web:1:0'),
-      node('ApiEndpoint', { method: 'GET', path: '/api/me', hasAuthMiddleware: true, isStateChanging: false }, 'ApiEndpoint:srv:1:1')
-    ],
-    [{ from: 'ApiCall:web:1:0', to: 'ApiEndpoint:srv:1:1', kind: 'calls' }]
-  );
-  const f = evaluateComponentGraph(g).issues.find(i => i.id === 'COMP-CROSSSTACK-AUTH-MISMATCH')!;
-  assert.ok(f); assert.strictEqual(f.category, 'coherence');
+test('cross-stack auth-mismatch (walks calls edges)', async (t) => {
+  await t.test('bearer-style call without an Authorization header IS flagged', () => {
+    const g = graphOf(
+      [
+        node('ApiCall', { method: 'GET', url: 'https://api.other.com/me', hasErrorHandling: true, hasTimeout: true, hasAuthHeader: false, hasCookieAuth: false }, 'ApiCall:web:1:0'),
+        node('ApiEndpoint', { method: 'GET', path: '/api/me', hasAuthMiddleware: true, isStateChanging: false }, 'ApiEndpoint:srv:1:1')
+      ],
+      [{ from: 'ApiCall:web:1:0', to: 'ApiEndpoint:srv:1:1', kind: 'calls' }]
+    );
+    const f = evaluateComponentGraph(g).issues.find(i => i.id === 'COMP-CROSSSTACK-AUTH-MISMATCH')!;
+    assert.ok(f); assert.strictEqual(f.category, 'coherence');
+  });
+
+  await t.test('same-origin cookie-authenticated call is NOT a false mismatch', () => {
+    const g = graphOf(
+      [
+        node('ApiCall', { method: 'PATCH', url: '/api/admin/orders/1', hasErrorHandling: true, hasTimeout: true, hasAuthHeader: false, hasCookieAuth: true }, 'ApiCall:web:1:0'),
+        node('ApiEndpoint', { method: 'PATCH', path: '/api/admin/orders/:param', hasAuthMiddleware: true, isStateChanging: true }, 'ApiEndpoint:srv:1:1')
+      ],
+      [{ from: 'ApiCall:web:1:0', to: 'ApiEndpoint:srv:1:1', kind: 'calls' }]
+    );
+    assert.ok(!evaluateComponentGraph(g).issues.some(i => i.id === 'COMP-CROSSSTACK-AUTH-MISMATCH'));
+  });
 });
 
 test('integration: buildComponentModel -> evaluateComponentGraph', async (t) => {

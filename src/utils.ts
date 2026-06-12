@@ -47,6 +47,7 @@ export function mapSeverity(level: string): Severity {
   const norm = level.toUpperCase().trim().split(' ')[0];
   switch (norm) {
     case 'CRITICAL':
+    case 'BLOCKER':   // SonarQube legacy top severity & MQR top impact severity
     case 'FATAL':
       return 'CRITICAL';
     case 'HIGH':

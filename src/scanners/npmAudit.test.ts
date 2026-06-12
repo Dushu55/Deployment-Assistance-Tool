@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { parseNpmAudit, runNpmAudit } from './npmAudit.js';
+import { parseNpmAudit, runNpmAudit, isForwardUpgrade } from './npmAudit.js';
 
 const FIXTURE = {
   auditReportVersion: 2,
@@ -53,6 +53,39 @@ test('parseNpmAudit', async (t) => {
     assert.deepStrictEqual(parseNpmAudit({}), []);
     assert.deepStrictEqual(parseNpmAudit(null), []);
     assert.deepStrictEqual(parseNpmAudit({ vulnerabilities: 'nope' }), []);
+  });
+
+  await t.test('refuses to recommend a downgrade (the Next 16 → 9.3.3 bug)', () => {
+    const fixture = {
+      vulnerabilities: {
+        next: {
+          name: 'next', severity: 'moderate', range: '9.3.4-canary.0 - 16.3.0-canary.5',
+          via: [{ title: 'X', url: 'https://github.com/advisories/GHSA-zzzz', severity: 'moderate' }],
+          fixAvailable: { name: 'next', version: '9.3.3', isSemVerMajor: true },
+        },
+      },
+    };
+    const rem = parseNpmAudit(fixture, { next: '^16.3.0' })[0].remediation!;
+    assert.doesNotMatch(rem, /Upgrade next to 9\.3\.3/);
+    assert.match(rem, /not a forward upgrade/i);
+    assert.match(rem, /do NOT downgrade/i);
+  });
+
+  await t.test('still recommends a genuine forward upgrade', () => {
+    const rem = parseNpmAudit(FIXTURE, { lodash: '4.17.20' }).find((i) => i.message.includes('Package lodash '))!.remediation!;
+    assert.match(rem, /Upgrade lodash to 4\.17\.21/);
+  });
+});
+
+test('isForwardUpgrade', async (t) => {
+  await t.test('detects forward, backward, and equal', () => {
+    assert.strictEqual(isForwardUpgrade('16.3.0', '9.3.3'), false);  // downgrade
+    assert.strictEqual(isForwardUpgrade('^16.3.0', '9.3.3'), false); // range operator tolerated
+    assert.strictEqual(isForwardUpgrade('4.17.20', '4.17.21'), true);
+    assert.strictEqual(isForwardUpgrade('1.0.0', '1.0.0'), false);   // equal is not forward
+  });
+  await t.test('unparseable versions default to true (preserve the suggestion)', () => {
+    assert.strictEqual(isForwardUpgrade('latest', 'next'), true);
   });
 });
 

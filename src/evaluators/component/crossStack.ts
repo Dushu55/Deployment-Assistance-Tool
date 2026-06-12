@@ -5,8 +5,10 @@ const SRC = 'Component Evaluator';
 
 /**
  * Coherence checks across the front/back boundary, walking `calls` edges (ApiCall → ApiEndpoint).
- * Flags a client call that sends no auth header to an endpoint whose handler requires auth — the
- * call will 401 at runtime, a front/back contract mismatch.
+ * Flags a client call to an auth-protected endpoint that carries NEITHER an Authorization header NOR
+ * cookie-based auth. Same-origin/relative calls and credentials:'include' calls are cookie-authenticated
+ * (the browser sends the session cookie automatically) — flagging those produced false "will be rejected"
+ * findings, so they are excluded here.
  */
 export function evaluateCrossStack(graph: ComponentGraph): Issue[] {
   const issues: Issue[] = [];
@@ -20,14 +22,14 @@ export function evaluateCrossStack(graph: ComponentGraph): Issue[] {
     const ca = caller.attributes as any;
     const ta = target.attributes as any;
 
-    if (ta.hasAuthMiddleware && !ca.hasAuthHeader) {
+    if (ta.hasAuthMiddleware && !ca.hasAuthHeader && !ca.hasCookieAuth) {
       issues.push({
         id: 'COMP-CROSSSTACK-AUTH-MISMATCH',
         severity: 'MEDIUM',
-        message: `${caller.label} (${caller.location.file}) calls ${target.label}, which requires authentication, but sends no Authorization header — this request will be rejected.`,
+        message: `${caller.label} (${caller.location.file}) calls ${target.label}, which appears to require authentication, but sends no Authorization header and is not a same-origin (cookie-authenticated) call — it may be rejected if the endpoint expects a bearer token.`,
         file: caller.location.file,
         line: caller.location.line,
-        remediation: 'Attach the auth token (Authorization header) to the client call, or relax the endpoint if it is meant to be public.',
+        remediation: 'If the endpoint uses bearer-token auth, attach the Authorization header; if it uses a session cookie, make the call same-origin or set credentials:"include"; if it is meant to be public, relax the endpoint.',
         source: SRC,
         category: 'coherence'
       });

@@ -62,8 +62,39 @@ test('buildFixManifest', async (t) => {
     assert.strictEqual(evalFinding.location.startLine, 4);
   });
 
-  await t.test('records skipped scanners as coverage gaps, not findings', () => {
-    assert.strictEqual(manifest.coverageGaps.length, 1);
-    assert.strictEqual(manifest.coverageGaps[0].scanner, 'Trivy');
+  await t.test('records skipped scanners AND not-run security dimensions as honest coverage gaps', () => {
+    const names = manifest.coverageGaps.map(g => g.scanner);
+    assert.ok(names.includes('Trivy'), 'skipped Trivy recorded');
+    assert.ok(names.includes('OWASP ZAP'), 'DAST gap recorded (was not run)');
+    assert.ok(names.includes('Gitleaks (Secrets)'), 'secret-scan gap recorded (was not run)');
+  });
+
+  await t.test('varies confidence: deterministic high, heuristic component-eval medium, coherence low', () => {
+    const report = makeReport();
+    report.results.push({ scannerName: 'Component Evaluator', success: true, durationMs: 1, issues: [
+      { id: 'COMP-APICALL-NO-TIMEOUT', severity: 'MEDIUM', message: 'no timeout', file: 'a.tsx', line: 3, source: 'Component Evaluator', category: 'robustness' },
+      { id: 'COMP-CROSSSTACK-AUTH-MISMATCH', severity: 'MEDIUM', message: 'mismatch', file: 'b.tsx', line: 4, source: 'Component Evaluator', category: 'coherence' },
+    ]});
+    const m = buildFixManifest(report, { verifyCommand: 'npm test', failOn: ['CRITICAL', 'HIGH'] });
+    assert.strictEqual(m.findings.find(f => f.title === 'rules.eval')!.confidence, 'high');
+    assert.strictEqual(m.findings.find(f => f.title === 'COMP-APICALL-NO-TIMEOUT')!.confidence, 'medium');
+    assert.strictEqual(m.findings.find(f => f.title === 'COMP-CROSSSTACK-AUTH-MISMATCH')!.confidence, 'low');
+  });
+
+  await t.test('raises falsePositiveLikelihood for findings in test files', () => {
+    const f = manifest.findings.find(f => f.title === 'TEST-FAILURE')!; // src/login.test.ts
+    assert.strictEqual(f.falsePositiveLikelihood, 'high');
+    assert.strictEqual(manifest.findings.find(f => f.title === 'rules.eval')!.falsePositiveLikelihood, 'low'); // src/a.ts
+  });
+
+  await t.test('groups repeated rules so they can be batch-fixed', () => {
+    const report = makeReport();
+    report.results.push({ scannerName: 'SonarQube', success: true, durationMs: 1, issues: [
+      { id: 'typescript:S7764', severity: 'LOW', message: 'prefer globalThis', file: 'a.ts', line: 1, source: 'SonarQube', category: 'best-practice' },
+      { id: 'typescript:S7764', severity: 'LOW', message: 'prefer globalThis', file: 'b.ts', line: 2, source: 'SonarQube', category: 'best-practice' },
+    ]});
+    const m = buildFixManifest(report, {});
+    const grp = m.groups.find(g => g.key === 'typescript:S7764')!;
+    assert.ok(grp); assert.strictEqual(grp.count, 2);
   });
 });

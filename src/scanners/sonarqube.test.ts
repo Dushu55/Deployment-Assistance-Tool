@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { isSonarConfigured, runSonarQube, sonarqubeScanner, deriveProjectKey, buildSonarArgs } from './sonarqube.js';
+import { isSonarConfigured, runSonarQube, sonarqubeScanner, deriveProjectKey, buildSonarArgs, classifySonarIssue, sonarRemediation } from './sonarqube.js';
 import { DatConfig } from '../types.js';
 
 test('SonarQube scanner', async (t) => {
@@ -63,6 +63,50 @@ function withEnv(vars: Record<string, string | undefined>, fn: () => void) {
 const cfg = (sonarqube: any, exclude?: string[]): DatConfig =>
   ({ scanners: { sonarqube }, failOn: ['CRITICAL', 'HIGH'], ...(exclude ? { exclude } : {}) } as any);
 
+test('classifySonarIssue', async (t) => {
+  await t.test('a code smell (maintainability) is best-practice and clamped to MEDIUM — never gate-blocking', () => {
+    // S2871-style: SonarQube MQR rates the reliability/maintainability impact HIGH, but it must not gate.
+    const r = classifySonarIssue({ type: 'CODE_SMELL', impacts: [{ softwareQuality: 'MAINTAINABILITY', severity: 'HIGH' }] });
+    assert.strictEqual(r.category, 'best-practice');
+    assert.strictEqual(r.severity, 'MEDIUM');
+  });
+
+  await t.test('a reliability bug is a defect and clamped (not security, not gate-blocking)', () => {
+    const r = classifySonarIssue({ type: 'BUG', impacts: [{ softwareQuality: 'RELIABILITY', severity: 'HIGH' }] });
+    assert.strictEqual(r.category, 'defect');
+    assert.strictEqual(r.severity, 'MEDIUM');
+  });
+
+  await t.test('a real vulnerability keeps its security category AND full severity', () => {
+    const r = classifySonarIssue({ type: 'VULNERABILITY', impacts: [{ softwareQuality: 'SECURITY', severity: 'HIGH' }] });
+    assert.strictEqual(r.category, 'security');
+    assert.strictEqual(r.severity, 'HIGH');
+  });
+
+  await t.test('a SECURITY impact on a non-VULNERABILITY type still counts as security', () => {
+    const r = classifySonarIssue({ type: 'CODE_SMELL', impacts: [{ softwareQuality: 'SECURITY', severity: 'BLOCKER' }] });
+    assert.strictEqual(r.category, 'security');
+    assert.strictEqual(r.severity, 'CRITICAL'); // BLOCKER → CRITICAL, kept because it is security
+  });
+
+  await t.test('falls back to legacy severity when no MQR impacts are present', () => {
+    const r = classifySonarIssue({ type: 'CODE_SMELL', severity: 'INFO' });
+    assert.strictEqual(r.category, 'best-practice');
+    assert.strictEqual(r.severity, 'LOW'); // legacy INFO → LOW
+  });
+});
+
+test('sonarRemediation', async (t) => {
+  await t.test('returns a concrete hint for a known rule (any language prefix)', () => {
+    assert.match(sonarRemediation('typescript:S2871')!, /compare function/i);
+    assert.match(sonarRemediation('javascript:S2871')!, /compare function/i);
+  });
+  await t.test('returns a generic pointer for an unknown rule, undefined when no rule', () => {
+    assert.match(sonarRemediation('typescript:S9999')!, /SonarSource rule typescript:S9999/);
+    assert.strictEqual(sonarRemediation(undefined), undefined);
+  });
+});
+
 test('deriveProjectKey', async (t) => {
   await t.test('explicit config override wins over env and slug', () => {
     withEnv({ SONAR_PROJECT_KEY: 'from-env' }, () => {
@@ -109,6 +153,7 @@ test('buildSonarArgs', async (t) => {
       const args = buildSonarArgs({ cwd: '/x/app', config: cfg({ enabled: true }, ['**/*.test.ts']), hasProperties: false });
       const exc = args.find(a => a.startsWith('-Dsonar.exclusions='))!;
       assert.ok(exc.includes('**/node_modules/**'), 'node_modules excluded by default');
+      assert.ok(exc.includes('**/results/**'), "DAT's own results/ output dir excluded by default");
       assert.ok(exc.includes('**/*.test.ts'), 'user exclude merged in');
       // even with no config.exclude, defaults are still applied
       const bare = buildSonarArgs({ cwd: '/x/app', config: cfg({ enabled: true }), hasProperties: false });

@@ -17,8 +17,33 @@ const NPM_SEVERITY: Record<string, Severity> = {
   critical: 'CRITICAL', high: 'HIGH', moderate: 'MEDIUM', low: 'LOW', info: 'INFO',
 };
 
-/** Pure parser for `npm audit --json` (npm v7+ shape), exported for unit tests. */
-export function parseNpmAudit(parsed: any): Issue[] {
+/** Parse the leading numeric semver core (major.minor.patch) from a version or range string. */
+function parseVersionCore(v: string): [number, number, number] | null {
+  const m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v ?? ''));
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+  const loose = /(\d+)(?:\.(\d+))?/.exec(String(v ?? '')); // tolerate "16" or "16.3"
+  return loose ? [Number(loose[1]), Number(loose[2] ?? 0), 0] : null;
+}
+
+/**
+ * True when `to` is a strictly higher version than `from`. Used to reject npm audit's `fixAvailable`
+ * when it points at a LOWER version than what's installed (npm's nested fix data can suggest, e.g.,
+ * "next@9.3.3" for an app on next@16 — a destructive downgrade). When either version can't be parsed
+ * we return true so the upgrade suggestion is preserved (no information ⇒ don't second-guess npm).
+ */
+export function isForwardUpgrade(from: string, to: string): boolean {
+  const a = parseVersionCore(from), b = parseVersionCore(to);
+  if (!a || !b) return true;
+  for (let i = 0; i < 3; i++) if (b[i] !== a[i]) return b[i] > a[i];
+  return false; // identical core ⇒ not a forward upgrade
+}
+
+/**
+ * Pure parser for `npm audit --json` (npm v7+ shape), exported for unit tests.
+ * `installed` maps package name → declared/installed version (from package.json) so we can refuse to
+ * recommend a downgrade.
+ */
+export function parseNpmAudit(parsed: any, installed: Record<string, string> = {}): Issue[] {
   const issues: Issue[] = [];
   const vulns = parsed?.vulnerabilities;
   if (!vulns || typeof vulns !== 'object') return issues;
@@ -32,8 +57,16 @@ export function parseNpmAudit(parsed: any): Issue[] {
     let remediation: string | undefined;
     if (v?.fixAvailable === true) remediation = 'Run `npm audit fix`.';
     else if (v?.fixAvailable && typeof v.fixAvailable === 'object') {
-      remediation = `Upgrade ${v.fixAvailable.name} to ${v.fixAvailable.version}` +
-        (v.fixAvailable.isSemVerMajor ? ' (major version bump — review breaking changes).' : '.');
+      const fixName = v.fixAvailable.name;
+      const fixVer = v.fixAvailable.version;
+      const current = installed[fixName];
+      if (current && !isForwardUpgrade(current, fixVer)) {
+        // npm's suggested fix would DOWNGRADE the package — never recommend that.
+        remediation = `npm audit's suggested fix (${fixName}@${fixVer}) is not a forward upgrade from the installed ${fixName}@${current} — do NOT downgrade. Review the advisory and pin a forward-compatible version (an "overrides"/"resolutions" entry) or await a patched release.`;
+      } else {
+        remediation = `Upgrade ${fixName} to ${fixVer}` +
+          (v.fixAvailable.isSemVerMajor ? ' (major version bump — review breaking changes).' : '.');
+      }
     } else remediation = 'No fixed release yet — monitor the advisory and consider an override/patch.';
 
     issues.push({
@@ -47,6 +80,14 @@ export function parseNpmAudit(parsed: any): Issue[] {
     });
   }
   return issues;
+}
+
+/** Declared dependency versions from package.json (name → version range), for downgrade detection. */
+function readInstalledVersions(dir: string): Record<string, string> {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+    return { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}), ...(pkg.optionalDependencies ?? {}) };
+  } catch { return {}; }
 }
 
 export async function runNpmAudit(targetDir: string = '.'): Promise<ScannerResult> {
@@ -92,7 +133,7 @@ export async function runNpmAudit(targetDir: string = '.'): Promise<ScannerResul
       };
     }
 
-    return { scannerName: SRC, success: true, durationMs, issues: parseNpmAudit(parsed) };
+    return { scannerName: SRC, success: true, durationMs, issues: parseNpmAudit(parsed, readInstalledVersions(dir)) };
   } catch (err) {
     return {
       scannerName: SRC, success: false, durationMs: Date.now() - startTime, issues: [],

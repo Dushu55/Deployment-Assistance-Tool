@@ -1,5 +1,5 @@
 import { runCommand } from '../runner.js';
-import { ScannerResult, Issue, Scanner, Severity, DatConfig } from '../types.js';
+import { ScannerResult, Issue, Scanner, Severity, FixCategory, DatConfig } from '../types.js';
 import { mapSeverity } from '../utils.js';
 import fs from 'fs';
 import path from 'path';
@@ -41,9 +41,12 @@ export function deriveProjectKey(cwd: string = process.cwd(), config?: DatConfig
 }
 
 // Dependency/build/output dirs SonarQube should never analyse — keeps a zero-config run signal-rich.
+// `results/**` is DAT's own report output dir (the default for --html/--sarif/--csv/--fix-manifest);
+// excluding it stops SonarQube from scanning DAT's own generated report and flagging it as findings.
 export const DEFAULT_SONAR_EXCLUSIONS = [
   '**/node_modules/**', '**/dist/**', '**/build/**', '**/.next/**', '**/out/**',
   '**/coverage/**', '**/vendor/**', '**/.venv/**', '**/__pycache__/**', '**/target/**',
+  '**/results/**',
 ];
 
 export interface SonarArgsOptions {
@@ -76,6 +79,77 @@ export function buildSonarArgs(opts: SonarArgsOptions): string[] {
   const org = process.env.SONAR_ORGANIZATION || cfg?.organization;
   if (org) args.push(`-Dsonar.organization=${org}`);
   return args;
+}
+
+/**
+ * Classify a raw SonarQube issue into DAT's (category, severity).
+ *
+ * SonarQube severity — legacy (BLOCKER/CRITICAL/MAJOR/MINOR/INFO) or the new MQR "impact" severity
+ * (BLOCKER/HIGH/MEDIUM/LOW/INFO) — describes code-quality impact, NOT deploy risk. We derive a DAT
+ * category from the issue's type / Clean-Code software quality, then CLAMP non-security findings to
+ * at most MEDIUM so a maintainability or reliability smell (e.g. S2871 in a test file) can never reach
+ * HIGH and block the deploy gate. Only genuine SECURITY findings keep their full mapped severity.
+ */
+export function classifySonarIssue(sqIssue: {
+  type?: string;
+  severity?: string;
+  impacts?: { softwareQuality?: string; severity?: string }[];
+}): { category: FixCategory; severity: Severity } {
+  const impacts = Array.isArray(sqIssue.impacts) ? sqIssue.impacts : [];
+  const qualities = impacts.map(i => String(i?.softwareQuality ?? '').toUpperCase());
+  const type = String(sqIssue.type ?? '').toUpperCase();
+
+  let category: FixCategory;
+  if (type === 'VULNERABILITY' || type === 'SECURITY_HOTSPOT' || qualities.includes('SECURITY')) {
+    category = 'security';
+  } else if (type === 'BUG' || qualities.includes('RELIABILITY')) {
+    category = 'defect';
+  } else {
+    category = 'best-practice'; // CODE_SMELL / MAINTAINABILITY / unknown
+  }
+
+  // Prefer the MQR impact severity when present (newer SonarQube), else the legacy severity.
+  let severity = mapSeverity(impacts[0]?.severity || sqIssue.severity || 'MEDIUM');
+
+  // A non-security code-quality finding must never gate the deploy: cap it at MEDIUM.
+  if (category !== 'security' && (severity === 'CRITICAL' || severity === 'HIGH')) {
+    severity = 'MEDIUM';
+  }
+  return { category, severity };
+}
+
+// Concrete fix hints for the SonarQube rules we see most often. SonarQube's issue payload carries no
+// remediation text, so without this the fix-manifest's suggestedFix is null for every Sonar finding.
+// Keyed by the bare rule number (SXXXX) since a rule means the same across language prefixes.
+const SONAR_REMEDIATION: Record<string, string> = {
+  S2871: 'Pass a compare function to .sort() — e.g. .sort((a, b) => a - b) for numbers or .sort((a, b) => a.localeCompare(b)) for strings. If a test is asserting an unordered set, sort both sides or compare as sets.',
+  S7785: 'Use top-level await instead of a .then()/.catch() promise chain where the module supports it.',
+  S5254: 'Add a lang attribute to the <html> element (e.g. <html lang="en">).',
+  S7924: 'Raise the text/background colour contrast to meet WCAG AA (≥ 4.5:1 for normal text).',
+  S5256: 'Add a <th> header row to the <table> so it is accessible to screen readers.',
+  S6759: 'Mark the component props as read-only (e.g. Readonly<Props> or readonly fields).',
+  S1874: 'Replace the deprecated API with its supported equivalent (follow the deprecation hint).',
+  S6772: 'Remove the ambiguous whitespace between JSX elements; use {" "} when a space is intended.',
+  S6582: 'Use an optional chain (a?.b) instead of an explicit null/undefined check.',
+  S3358: 'Extract the nested ternary into a separate statement or variable for readability.',
+  S7764: 'Prefer globalThis over window for cross-environment safety.',
+  S7735: 'Invert the negated condition to avoid a confusing double negative.',
+  S7758: 'Use String#codePointAt() instead of String#charCodeAt().',
+  S4325: 'Remove the unnecessary type assertion — it does not change the expression type.',
+  S7744: 'Remove the useless empty object or replace it with a meaningful value.',
+  S7781: 'Use String#replaceAll() instead of String#replace() with a global regex.',
+  S6853: 'Give the control accessible text: associate the <label> via htmlFor/id or wrap the control.',
+  S7749: 'Fix the numeric separator grouping (use consistent _ groups, or remove them).',
+  S7780: 'Use String.raw to avoid escaping backslashes in the literal.',
+  S6353: 'Use the concise character class \\d instead of [0-9].',
+};
+
+/** A concrete fix hint for the common SonarQube rules; a generic pointer otherwise. */
+export function sonarRemediation(rule?: string): string | undefined {
+  if (!rule) return undefined;
+  const key = /S\d+/i.exec(rule)?.[0]?.toUpperCase();
+  if (key && SONAR_REMEDIATION[key]) return SONAR_REMEDIATION[key];
+  return `See the SonarSource rule ${rule} for the recommended fix.`;
 }
 
 export async function runSonarQube(cwd: string = process.cwd(), config?: DatConfig): Promise<ScannerResult> {
@@ -188,17 +262,16 @@ export async function runSonarQube(cwd: string = process.cwd(), config?: DatConf
 
     if (issuesJson.issues && Array.isArray(issuesJson.issues)) {
        issuesJson.issues.forEach((sqIssue: any) => {
-          let severityStr = sqIssue.severity || 'MEDIUM';
-          if (sqIssue.impacts && sqIssue.impacts.length > 0) {
-              severityStr = sqIssue.impacts[0].severity; // Use new Clean Code impact severity if available
-          }
+          const { category, severity } = classifySonarIssue(sqIssue);
           issues.push({
              id: sqIssue.rule,
-             severity: mapSeverity(severityStr),
+             severity,
              message: sqIssue.message,
              file: sqIssue.component ? sqIssue.component.replace(`${projectKey}:`, '') : undefined,
              line: sqIssue.line,
-             source: 'SonarQube'
+             source: 'SonarQube',
+             category,
+             remediation: sonarRemediation(sqIssue.rule),
           });
        });
     }
